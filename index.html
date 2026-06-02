@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Client Opening Tracker</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel-2: #273449;
+    --border: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #6366f1;
+    --accent-h: #818cf8;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --blue: #38bdf8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  header {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  header h1 { font-size: 22px; margin: 0; font-weight: 650; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    padding: 9px 16px;
+    border-radius: 8px;
+    transition: .15s;
+  }
+  button:hover { border-color: var(--accent-h); }
+  button.primary { background: var(--accent); border-color: var(--accent); }
+  button.primary:hover { background: var(--accent-h); }
+  main { padding: 24px 32px 64px; max-width: 1200px; margin: 0 auto; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 14px; margin-bottom: 28px; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .stat .n { font-size: 26px; font-weight: 700; }
+  .stat .l { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .filters input, .filters select {
+    font: inherit; background: var(--panel); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px;
+  }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 12px; overflow: hidden; }
+  th, td { text-align: left; padding: 13px 16px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--panel-2); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .b-on-track { background: rgba(34,197,94,.15); color: var(--green); }
+  .b-at-risk { background: rgba(245,158,11,.15); color: var(--amber); }
+  .b-delayed { background: rgba(239,68,68,.15); color: var(--red); }
+  .b-opened { background: rgba(56,189,248,.15); color: var(--blue); }
+  .flag { font-size: 11px; padding: 2px 8px; border-radius: 6px; margin-left: 6px; }
+  .flag-pre { background: rgba(245,158,11,.18); color: var(--amber); }
+  .flag-post { background: rgba(56,189,248,.18); color: var(--blue); }
+  .countdown { color: var(--muted); font-size: 12px; }
+  .row-actions button { padding: 5px 10px; font-size: 12px; }
+  .check { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  /* Modal */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 460px; padding: 24px; }
+  .modal h2 { margin: 0 0 18px; font-size: 18px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+  .field input, .field select, .field textarea {
+    width: 100%; font: inherit; background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px;
+  }
+  .field textarea { resize: vertical; min-height: 60px; }
+  .modal-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 22px; }
+  .hint { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--muted); margin-bottom: 18px; }
+  .empty { text-align: center; color: var(--muted); padding: 40px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Client Opening Tracker</h1>
+    <p>Monitor location opening dates and follow-up reminders</p>
+  </div>
+  <div class="actions">
+    <button class="primary" onclick="openModal()">+ Add Location</button>
+    <button onclick="exportJSON()">Export locations.json</button>
+  </div>
+</header>
+<main>
+  <div class="hint">
+    Edits are made in your browser. When done, click <b>Export locations.json</b> and commit the downloaded file to GitHub to share changes with the team. Slack reminders are sent automatically 3 days before and 3 days after each opening.
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="filters">
+    <input id="search" placeholder="Search name or tracker..." oninput="render()" />
+    <select id="statusFilter" onchange="render()">
+      <option value="">All statuses</option>
+      <option value="on-track">On track</option>
+      <option value="at-risk">At risk</option>
+      <option value="delayed">Delayed</option>
+      <option value="opened">Opened</option>
+    </select>
+  </div>
+  <table>
+    <thead>
+      <tr><th>Location</th><th>Opening</th><th>Tracker</th><th>Status</th><th>Follow-ups</th><th></th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div id="empty" class="empty" style="display:none">No locations match your filters.</div>
+</main>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle">Add Location</h2>
+    <input type="hidden" id="f-id" />
+    <div class="field"><label>Location name</label><input id="f-name" /></div>
+    <div class="field"><label>Opening date</label><input id="f-date" type="date" /></div>
+    <div class="field"><label>Who's tracking</label><input id="f-tracker" /></div>
+    <div class="field"><label>Status</label>
+      <select id="f-status">
+        <option value="on-track">On track</option>
+        <option value="at-risk">At risk</option>
+        <option value="delayed">Delayed</option>
+        <option value="opened">Opened</option>
+      </select>
+    </div>
+    <div class="field"><label>Notes / things to check</label><textarea id="f-notes"></textarea></div>
+    <div class="field">
+      <label class="check"><input type="checkbox" id="f-pre" /> Pre-open follow-up done</label>
+      <label class="check"><input type="checkbox" id="f-post" /> Post-open follow-up done</label>
+    </div>
+    <div class="modal-actions">
+      <button id="deleteBtn" onclick="deleteLocation()" style="color:var(--red)">Delete</button>
+      <div style="display:flex;gap:10px">
+        <button onclick="closeModal()">Cancel</button>
+        <button class="primary" onclick="saveLocation()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let data = { locations: [] };
+
+const STATUS_LABELS = { "on-track":"On track","at-risk":"At risk","delayed":"Delayed","opened":"Opened" };
+
+async function load() {
+  try {
+    const res = await fetch('locations.json?' + Date.now());
+    if (res.ok) data = await res.json();
+  } catch (e) { console.warn('Could not load locations.json', e); }
+  if (!data.locations) data.locations = [];
+  render();
+}
+
+function daysUntil(dateStr) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(dateStr + 'T00:00:00');
+  return Math.round((d - today) / 86400000);
+}
+
+function followFlags(loc) {
+  const dd = daysUntil(loc.openingDate);
+  const flags = [];
+  if (!loc.preOpenDone && dd <= 3 && dd >= 0) flags.push('<span class="flag flag-pre">Pre-open due</span>');
+  if (!loc.postOpenDone && dd <= -3) flags.push('<span class="flag flag-post">Post-open due</span>');
+  return flags.join('');
+}
+
+function render() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const sf = document.getElementById('statusFilter').value;
+  const rows = document.getElementById('rows');
+  const list = data.locations
+    .filter(l => (l.name + ' ' + (l.tracker||'')).toLowerCase().includes(q))
+    .filter(l => !sf || l.status === sf)
+    .sort((a,b) => a.openingDate.localeCompare(b.openingDate));
+
+  rows.innerHTML = list.map(l => {
+    const dd = daysUntil(l.openingDate);
+    const cd = l.status === 'opened' ? 'Opened' : (dd > 0 ? `in ${dd}d` : dd === 0 ? 'today' : `${-dd}d ago`);
+    return `<tr>
+      <td><b>${esc(l.name)}</b>${l.notes?`<div class="countdown">${esc(l.notes)}</div>`:''}</td>
+      <td>${esc(l.openingDate)}<div class="countdown">${cd}</div></td>
+      <td>${esc(l.tracker||'—')}</td>
+      <td><span class="badge b-${l.status}">${STATUS_LABELS[l.status]||l.status}</span></td>
+      <td>${followFlags(l) || '<span class="countdown">—</span>'}</td>
+      <td class="row-actions"><button onclick="openModal('${l.id}')">Edit</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('empty').style.display = list.length ? 'none' : 'block';
+  renderStats();
+}
+
+function renderStats() {
+  const total = data.locations.length;
+  const upcoming = data.locations.filter(l => l.status!=='opened' && daysUntil(l.openingDate) >= 0).length;
+  const needFollow = data.locations.filter(l => followFlags(l)).length;
+  const atRisk = data.locations.filter(l => l.status==='at-risk'||l.status==='delayed').length;
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="n">${total}</div><div class="l">Total</div></div>
+    <div class="stat"><div class="n">${upcoming}</div><div class="l">Upcoming</div></div>
+    <div class="stat"><div class="n" style="color:var(--amber)">${needFollow}</div><div class="l">Need follow-up</div></div>
+    <div class="stat"><div class="n" style="color:var(--red)">${atRisk}</div><div class="l">At risk / delayed</div></div>`;
+}
+
+function esc(s){ return (s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function openModal(id) {
+  const o = document.getElementById('overlay');
+  if (id) {
+    const l = data.locations.find(x => x.id === id);
+    document.getElementById('modalTitle').textContent = 'Edit Location';
+    document.getElementById('f-id').value = l.id;
+    document.getElementById('f-name').value = l.name;
+    document.getElementById('f-date').value = l.openingDate;
+    document.getElementById('f-tracker').value = l.tracker || '';
+    document.getElementById('f-status').value = l.status;
+    document.getElementById('f-notes').value = l.notes || '';
+    document.getElementById('f-pre').checked = !!l.preOpenDone;
+    document.getElementById('f-post').checked = !!l.postOpenDone;
+    document.getElementById('deleteBtn').style.display = 'block';
+  } else {
+    document.getElementById('modalTitle').textContent = 'Add Location';
+    ['f-id','f-name','f-tracker','f-notes'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('f-date').value = '';
+    document.getElementById('f-status').value = 'on-track';
+    document.getElementById('f-pre').checked = false;
+    document.getElementById('f-post').checked = false;
+    document.getElementById('deleteBtn').style.display = 'none';
+  }
+  o.classList.add('open');
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('open'); }
+
+function saveLocation() {
+  const id = document.getElementById('f-id').value;
+  const name = document.getElementById('f-name').value.trim();
+  const date = document.getElementById('f-date').value;
+  if (!name || !date) { alert('Name and opening date are required.'); return; }
+  const obj = {
+    id: id || 'loc-' + Date.now(),
+    name,
+    openingDate: date,
+    tracker: document.getElementById('f-tracker').value.trim(),
+    status: document.getElementById('f-status').value,
+    notes: document.getElementById('f-notes').value.trim(),
+    preOpenDone: document.getElementById('f-pre').checked,
+    postOpenDone: document.getElementById('f-post').checked
+  };
+  if (id) {
+    const i = data.locations.findIndex(x => x.id === id);
+    data.locations[i] = obj;
+  } else {
+    data.locations.push(obj);
+  }
+  closeModal(); render();
+}
+
+function deleteLocation() {
+  const id = document.getElementById('f-id').value;
+  if (id && confirm('Delete this location?')) {
+    data.locations = data.locations.filter(x => x.id !== id);
+    closeModal(); render();
+  }
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'locations.json';
+  a.click();
+}
+
+document.getElementById('overlay').addEventListener('click', e => { if (e.target.id === 'overlay') closeModal(); });
+load();
+</script>
+</body>
+</html>
