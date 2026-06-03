@@ -13,7 +13,7 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
-  header { padding: 28px 32px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+  header { padding: 16px 32px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
   header h1 { font-size: 22px; margin: 0; font-weight: 650; }
   header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
   .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
@@ -22,18 +22,18 @@
   button.primary { background: var(--accent); border-color: var(--accent); }
   button.primary:hover { background: var(--accent-h); }
   button:disabled { opacity: .45; cursor: not-allowed; }
-  main { padding: 24px 32px 64px; max-width: 1200px; margin: 0 auto; }
-  .status-line { font-size: 12px; color: var(--muted); margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+  main { padding: 16px 32px 24px; max-width: 1200px; margin: 0 auto; }
+  .status-line { font-size: 12px; color: var(--muted); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
   .dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); }
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 14px; margin-bottom: 28px; }
-  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
-  .stat .n { font-size: 26px; font-weight: 700; }
-  .stat .l { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-  .filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; margin-bottom: 14px; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; }
+  .stat .n { font-size: 22px; font-weight: 700; }
+  .stat .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .filters { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
   .filters input, .filters select { font: inherit; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; }
   table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 12px; overflow: hidden; }
-  th, td { text-align: left; padding: 13px 16px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  th, td { text-align: left; padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 14px; }
   th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: var(--panel-2); }
@@ -60,11 +60,23 @@
   .field textarea { resize: vertical; min-height: 60px; }
   .modal-actions { display: flex; justify-content: space-between; gap: 10px; margin-top: 22px; }
   .empty { text-align: center; color: var(--muted); padding: 40px; }
-  .pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+  .pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
   .pager .info { font-size: 12px; color: var(--muted); }
   .pager .pages { display: flex; gap: 6px; flex-wrap: wrap; }
   .pager .pages button { padding: 6px 12px; font-size: 13px; min-width: 38px; }
   .pager .pages button.active { background: var(--accent); border-color: var(--accent); }
+  .modal.sm { max-width: 380px; text-align: center; }
+  .modal.sm .icon { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; font-size: 24px; }
+  .modal.sm .icon.lock { background: rgba(99,102,241,.15); }
+  .modal.sm .icon.warn { background: rgba(239,68,68,.15); }
+  .modal.sm h2 { margin: 0 0 6px; }
+  .modal.sm p { margin: 0 0 18px; color: var(--muted); font-size: 14px; }
+  .modal.sm input { width: 100%; font: inherit; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; text-align: center; margin-bottom: 6px; }
+  .modal.sm .err { color: var(--red); font-size: 12px; min-height: 16px; margin-bottom: 10px; }
+  .modal.sm .btns { display: flex; gap: 10px; }
+  .modal.sm .btns button { flex: 1; padding: 11px; }
+  .danger { background: var(--red); border-color: var(--red); color: #fff; }
+  .danger:hover { background: #dc2626; border-color: #dc2626; }
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--panel-2); border: 1px solid var(--border); padding: 10px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transition: .25s; pointer-events: none; z-index: 100; }
   .toast.show { opacity: 1; }
 </style>
@@ -132,6 +144,34 @@
   </div>
 </div>
 
+<!-- Password modal -->
+<div class="overlay" id="pwOverlay">
+  <div class="modal sm">
+    <div class="icon lock">🔒</div>
+    <h2>Enter Team Password</h2>
+    <p>This unlocks adding and editing clients.</p>
+    <input type="password" id="pwInput" placeholder="Password" onkeydown="if(event.key==='Enter')submitPassword();" />
+    <div class="err" id="pwErr"></div>
+    <div class="btns">
+      <button onclick="closePwModal()">Cancel</button>
+      <button class="primary" onclick="submitPassword()">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirm modal -->
+<div class="overlay" id="confirmOverlay">
+  <div class="modal sm">
+    <div class="icon warn">🗑️</div>
+    <h2>Delete this client?</h2>
+    <p id="confirmText">This will permanently remove the entry. This can't be undone.</p>
+    <div class="btns">
+      <button onclick="closeConfirm()">Cancel</button>
+      <button class="danger" onclick="confirmYes()">Delete</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -139,13 +179,20 @@
 const CONFIG = {
   supabaseUrl: 'https://hhistoyrbwxyywoyhdod.supabase.co',
   supabaseKey: 'sb_publishable_odHKPTKaGUQ4VRAs5iG5pg_9VtFRgbJ',
-  editPassword: 'openings2026'   // shared team editing password
+  // SHA-256 hash of the shared team password (the plain password is never stored here).
+  // To change it: compute the SHA-256 of the new password and paste the hash below.
+  editPasswordHash: '6f14f8a03d4ce4addef178902136149642a5d5bb9da6e0548616c06dff03fb60'
 };
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 const sb = supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
 let data = [];
 let currentPage = 1;
-const PAGE_SIZE = 7;
+const PAGE_SIZE = 10;
 let unlocked = sessionStorage.getItem('editUnlocked') === '1';
 const STATUS_LABELS = { "on-track":"On track","at-risk":"At risk","delayed":"Delayed","opened":"Opened" };
 
@@ -246,19 +293,35 @@ function setLockUI() {
   document.getElementById('lockBtn').textContent = unlocked ? '🔓 Editing unlocked' : '🔒 Unlock editing';
   document.getElementById('addBtn').disabled = !unlocked;
 }
+let pendingAction = null;
 function toggleLock() {
-  if (unlocked) { unlocked = false; sessionStorage.removeItem('editUnlocked'); setLockUI(); return; }
-  const p = prompt('Enter the team editing password:');
-  if (p === null) return;
-  if (p === CONFIG.editPassword) { unlocked = true; sessionStorage.setItem('editUnlocked','1'); setLockUI(); toast('Editing unlocked'); }
-  else alert('Incorrect password.');
+  if (unlocked) { unlocked = false; sessionStorage.removeItem('editUnlocked'); setLockUI(); toast('Editing locked'); return; }
+  openPwModal(null);
 }
 function requireEdit(fn) {
   if (unlocked) return fn();
-  const p = prompt('Enter the team editing password:');
-  if (p === null) return;
-  if (p === CONFIG.editPassword) { unlocked = true; sessionStorage.setItem('editUnlocked','1'); setLockUI(); fn(); }
-  else alert('Incorrect password.');
+  openPwModal(fn);
+}
+function openPwModal(fn) {
+  pendingAction = fn;
+  document.getElementById('pwInput').value = '';
+  document.getElementById('pwErr').textContent = '';
+  document.getElementById('pwOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('pwInput').focus(), 50);
+}
+function closePwModal() { document.getElementById('pwOverlay').classList.remove('open'); pendingAction = null; }
+async function submitPassword() {
+  const val = document.getElementById('pwInput').value;
+  const hash = await sha256(val);
+  if (hash === CONFIG.editPasswordHash) {
+    unlocked = true; sessionStorage.setItem('editUnlocked','1'); setLockUI();
+    const fn = pendingAction; closePwModal();
+    toast('Editing unlocked');
+    if (fn) fn();
+  } else {
+    document.getElementById('pwErr').textContent = 'Incorrect password. Try again.';
+    document.getElementById('pwInput').select();
+  }
 }
 
 function openModal(id) {
@@ -310,9 +373,18 @@ async function saveLocation() {
   closeModal(); toast('Saved'); load();
 }
 
-async function deleteLocation() {
+function deleteLocation() {
   const id = document.getElementById('f-id').value;
-  if (!id || !confirm('Delete this location?')) return;
+  if (!id) return;
+  const l = data.find(x => x.id === id);
+  document.getElementById('confirmText').innerHTML =
+    `This will permanently remove <b>${esc((l&&l.clientName)||(l&&l.name)||'this entry')}</b>. This can't be undone.`;
+  document.getElementById('confirmOverlay').classList.add('open');
+}
+function closeConfirm() { document.getElementById('confirmOverlay').classList.remove('open'); }
+async function confirmYes() {
+  const id = document.getElementById('f-id').value;
+  closeConfirm();
   const { error } = await sb.from('locations').delete().eq('id', id);
   if (error) { alert('Delete failed: ' + error.message); return; }
   closeModal(); toast('Deleted'); load();
@@ -322,6 +394,8 @@ let toastT;
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2000); }
 
 document.getElementById('overlay').addEventListener('click', e => { if (e.target.id === 'overlay') closeModal(); });
+document.getElementById('pwOverlay').addEventListener('click', e => { if (e.target.id === 'pwOverlay') closePwModal(); });
+document.getElementById('confirmOverlay').addEventListener('click', e => { if (e.target.id === 'confirmOverlay') closeConfirm(); });
 setLockUI();
 load();
 </script>
