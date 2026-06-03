@@ -46,7 +46,9 @@
   .flag-post { background: rgba(56,189,248,.18); color: var(--blue); }
   .countdown { color: var(--muted); font-size: 12px; }
   .row-actions button { padding: 5px 10px; font-size: 12px; }
-  .check { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .checks { display: flex; flex-direction: column; gap: 10px; }
+  .check { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--text); cursor: pointer; }
+  .check input[type=checkbox] { width: 17px; height: 17px; margin: 0; flex: 0 0 auto; accent-color: var(--accent); cursor: pointer; }
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
   .overlay.open { display: flex; }
   .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 460px; padding: 24px; }
@@ -68,7 +70,7 @@
     <p>Monitor location opening dates and follow-up reminders</p>
   </div>
   <div class="actions">
-    <button class="primary" id="addBtn" onclick="requireEdit(openModal)">+ Add Location</button>
+    <button class="primary" id="addBtn" onclick="requireEdit(openModal)">+ Add Client</button>
     <button id="lockBtn" onclick="toggleLock()">🔒 Unlock editing</button>
   </div>
 </header>
@@ -86,16 +88,17 @@
     </select>
   </div>
   <table>
-    <thead><tr><th>Location</th><th>Opening</th><th>Tracker</th><th>Status</th><th>Follow-ups</th><th></th></tr></thead>
+    <thead><tr><th>Client</th><th>Location</th><th>Opening</th><th>Tracker</th><th>Status</th><th>Follow-ups</th><th></th></tr></thead>
     <tbody id="rows"></tbody>
   </table>
-  <div id="empty" class="empty" style="display:none">No locations yet. Unlock editing and click “Add Location”.</div>
+  <div id="empty" class="empty" style="display:none">No clients yet. Unlock editing and click “Add Client”.</div>
 </main>
 
 <div class="overlay" id="overlay">
   <div class="modal">
-    <h2 id="modalTitle">Add Location</h2>
+    <h2 id="modalTitle">Add Client</h2>
     <input type="hidden" id="f-id" />
+    <div class="field"><label>Client name</label><input id="f-client" /></div>
     <div class="field"><label>Location name</label><input id="f-name" /></div>
     <div class="field"><label>Opening date</label><input id="f-date" type="date" /></div>
     <div class="field"><label>Who's tracking</label><input id="f-tracker" /></div>
@@ -108,7 +111,7 @@
       </select>
     </div>
     <div class="field"><label>Notes / things to check</label><textarea id="f-notes"></textarea></div>
-    <div class="field">
+    <div class="field checks">
       <label class="check"><input type="checkbox" id="f-pre" /> Pre-open follow-up done</label>
       <label class="check"><input type="checkbox" id="f-post" /> Post-open follow-up done</label>
     </div>
@@ -137,8 +140,8 @@ let data = [];
 let unlocked = sessionStorage.getItem('editUnlocked') === '1';
 const STATUS_LABELS = { "on-track":"On track","at-risk":"At risk","delayed":"Delayed","opened":"Opened" };
 
-function toDb(o){ return { id:o.id, name:o.name, opening_date:o.openingDate, tracker:o.tracker, status:o.status, notes:o.notes, pre_open_done:o.preOpenDone, post_open_done:o.postOpenDone }; }
-function fromDb(r){ return { id:r.id, name:r.name, openingDate:r.opening_date, tracker:r.tracker, status:r.status, notes:r.notes, preOpenDone:r.pre_open_done, postOpenDone:r.post_open_done }; }
+function toDb(o){ return { id:o.id, client_name:o.clientName, name:o.name, opening_date:o.openingDate, tracker:o.tracker, status:o.status, notes:o.notes, pre_open_done:o.preOpenDone, post_open_done:o.postOpenDone }; }
+function fromDb(r){ return { id:r.id, clientName:r.client_name, name:r.name, openingDate:r.opening_date, tracker:r.tracker, status:r.status, notes:r.notes, preOpenDone:r.pre_open_done, postOpenDone:r.post_open_done }; }
 
 async function load() {
   const { data: rows, error } = await sb.from('locations').select('*');
@@ -174,14 +177,15 @@ function render() {
   const q = document.getElementById('search').value.toLowerCase();
   const sf = document.getElementById('statusFilter').value;
   const list = data
-    .filter(l => (l.name + ' ' + (l.tracker||'')).toLowerCase().includes(q))
+    .filter(l => (l.name + ' ' + (l.clientName||'') + ' ' + (l.tracker||'')).toLowerCase().includes(q))
     .filter(l => !sf || l.status === sf)
     .sort((a,b) => (a.openingDate||'').localeCompare(b.openingDate||''));
   document.getElementById('rows').innerHTML = list.map(l => {
     const dd = daysUntil(l.openingDate);
     const cd = l.status === 'opened' ? 'Opened' : (dd > 0 ? `in ${dd}d` : dd === 0 ? 'today' : `${-dd}d ago`);
     return `<tr>
-      <td><b>${esc(l.name)}</b>${l.notes?`<div class="countdown">${esc(l.notes)}</div>`:''}</td>
+      <td><b>${esc(l.clientName||'—')}</b></td>
+      <td>${esc(l.name)}${l.notes?`<div class="countdown">${esc(l.notes)}</div>`:''}</td>
       <td>${esc(l.openingDate)}<div class="countdown">${cd}</div></td>
       <td>${esc(l.tracker||'—')}</td>
       <td><span class="badge b-${l.status}">${STATUS_LABELS[l.status]||l.status}</span></td>
@@ -227,8 +231,9 @@ function requireEdit(fn) {
 function openModal(id) {
   if (id) {
     const l = data.find(x => x.id === id);
-    document.getElementById('modalTitle').textContent = 'Edit Location';
+    document.getElementById('modalTitle').textContent = 'Edit Client';
     document.getElementById('f-id').value = l.id;
+    document.getElementById('f-client').value = l.clientName || '';
     document.getElementById('f-name').value = l.name;
     document.getElementById('f-date').value = l.openingDate;
     document.getElementById('f-tracker').value = l.tracker || '';
@@ -238,8 +243,8 @@ function openModal(id) {
     document.getElementById('f-post').checked = !!l.postOpenDone;
     document.getElementById('deleteBtn').style.display = 'block';
   } else {
-    document.getElementById('modalTitle').textContent = 'Add Location';
-    ['f-id','f-name','f-tracker','f-notes'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('modalTitle').textContent = 'Add Client';
+    ['f-id','f-client','f-name','f-tracker','f-notes'].forEach(i=>document.getElementById(i).value='');
     document.getElementById('f-date').value = '';
     document.getElementById('f-status').value = 'on-track';
     document.getElementById('f-pre').checked = false;
@@ -257,6 +262,7 @@ async function saveLocation() {
   if (!name || !date) { alert('Name and opening date are required.'); return; }
   const obj = {
     id: id || 'loc-' + Date.now(),
+    clientName: document.getElementById('f-client').value.trim(),
     name, openingDate: date,
     tracker: document.getElementById('f-tracker').value.trim(),
     status: document.getElementById('f-status').value,
