@@ -74,8 +74,14 @@
   .check input[type=checkbox] { width: 17px; height: 17px; margin: 0; flex: 0 0 auto; accent-color: var(--accent); cursor: pointer; }
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
   .overlay.open { display: flex; }
-  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 460px; padding: 24px; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 460px; padding: 24px; max-height: 92vh; overflow-y: auto; }
+  .modal.wide { max-width: 760px; }
   .modal h2 { margin: 0 0 18px; font-size: 18px; }
+  /* Two-column form layout for the Add/Edit dialog */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+  .form-grid .span2 { grid-column: 1 / -1; }
+  .openedfields-wrap { display: contents; }   /* lets its children join the grid */
+  @media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
   .field { margin-bottom: 14px; }
   .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
   .field input, .field select, .field textarea { width: 100%; font: inherit; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; }
@@ -191,36 +197,38 @@
 </main>
 
 <div class="overlay" id="overlay">
-  <div class="modal">
+  <div class="modal wide">
     <h2 id="modalTitle">Add Client</h2>
     <input type="hidden" id="f-id" />
-    <div class="field"><label>Client Name</label><input id="f-client" /></div>
-    <div class="field"><label>Location Name</label><input id="f-name" /></div>
-    <div class="field"><label>PodPlay Tier</label>
-      <select id="f-tier">
-        <option value="Basic (+)">Basic (+)</option>
-        <option value="Pro/Auto (+)">Pro/Auto (+)</option>
-      </select>
-    </div>
-    <div class="field"><label>Opening Date</label><input id="f-date" type="date" /></div>
-    <div class="field"><label>Who's Tracking</label><input id="f-tracker" /></div>
-    <div class="field"><label>Status</label>
-      <select id="f-status" onchange="toggleOpenedFields()">
-        <option value="on-track">On track</option>
-        <option value="at-risk">At risk</option>
-        <option value="delayed">Delayed</option>
-        <option value="opened">Opened</option>
-      </select>
-    </div>
-    <!-- These two only appear when Status = Opened (the "Opened workflow") -->
-    <div id="openedFields" style="display:none">
-      <div class="field"><label>Actual open date</label><input id="f-opened-date" type="date" /></div>
-      <div class="field"><label>How did the opening go?</label><textarea id="f-open-outcome" placeholder="Any problems, wins, or notes from the opening..."></textarea></div>
-    </div>
-    <div class="field"><label>Notes / things to check</label><textarea id="f-notes"></textarea></div>
-    <div class="field checks">
-      <label class="check"><input type="checkbox" id="f-pre" /> Pre-open follow-up done</label>
-      <label class="check"><input type="checkbox" id="f-post" /> Post-open follow-up done</label>
+    <div class="form-grid">
+      <div class="field"><label>Client Name</label><input id="f-client" /></div>
+      <div class="field"><label>Location Name</label><input id="f-name" /></div>
+      <div class="field"><label>PodPlay Tier</label>
+        <select id="f-tier">
+          <option value="Basic (+)">Basic (+)</option>
+          <option value="Pro/Auto (+)">Pro/Auto (+)</option>
+        </select>
+      </div>
+      <div class="field"><label>Opening Date</label><input id="f-date" type="date" /></div>
+      <div class="field"><label>Who's Tracking</label><input id="f-tracker" /></div>
+      <div class="field"><label>Status</label>
+        <select id="f-status" onchange="toggleOpenedFields()">
+          <option value="on-track">On track</option>
+          <option value="at-risk">At risk</option>
+          <option value="delayed">Delayed</option>
+          <option value="opened">Opened</option>
+        </select>
+      </div>
+      <!-- These only appear when Status = Opened (the "Opened workflow") -->
+      <div id="openedFields" class="openedfields-wrap" style="display:none">
+        <div class="field"><label>Actual open date</label><input id="f-opened-date" type="date" /></div>
+        <div class="field span2"><label>How did the opening go?</label><textarea id="f-open-outcome" placeholder="Any problems, wins, or notes from the opening..."></textarea></div>
+      </div>
+      <div class="field span2"><label>Notes / things to check</label><textarea id="f-notes"></textarea></div>
+      <div class="field checks span2">
+        <label class="check"><input type="checkbox" id="f-pre" /> Pre-open follow-up done</label>
+        <label class="check"><input type="checkbox" id="f-post" /> Post-open follow-up done</label>
+      </div>
     </div>
     <div class="modal-actions">
       <button id="deleteBtn" onclick="deleteLocation()" style="color:var(--red)">Delete</button>
@@ -465,7 +473,8 @@ function renderStats() {
 // Show/hide the "Opened workflow" fields depending on the chosen status.
 function toggleOpenedFields() {
   const opened = document.getElementById('f-status').value === 'opened';
-  document.getElementById('openedFields').style.display = opened ? 'block' : 'none';
+  // 'contents' keeps the two inner fields flowing inside the form grid.
+  document.getElementById('openedFields').style.display = opened ? 'contents' : 'none';
 }
 
 /* --- Add / Edit dialog -------------------------------------------------------
