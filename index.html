@@ -30,10 +30,18 @@
   .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; }
   .stat .n { font-size: 22px; font-weight: 700; }
   .stat .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .tab { background: none; border: none; border-bottom: 2px solid transparent; border-radius: 0; padding: 8px 16px; color: var(--muted); font-size: 14px; }
+  .tab:hover { color: var(--text); border-color: transparent; }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+  .tab .pill { display: inline-block; margin-left: 7px; background: var(--panel-2); color: var(--muted); border-radius: 999px; padding: 1px 8px; font-size: 11px; }
   .filters { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
   .filters input, .filters select { font: inherit; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; }
-  table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 12px; overflow: hidden; }
-  th, td { text-align: left; padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  table { width: 100%; table-layout: fixed; border-collapse: collapse; background: var(--panel); border-radius: 12px; overflow: hidden; }
+  th, td { text-align: left; padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: top; overflow-wrap: anywhere; }
+  col.c-client { width: 11%; } col.c-loc { width: 28%; } col.c-tier { width: 9%; }
+  col.c-open { width: 10%; } col.c-tracker { width: 11%; } col.c-status { width: 9%; }
+  col.c-follow { width: 12%; } col.c-act { width: 10%; }
   th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: var(--panel-2); }
@@ -95,6 +103,10 @@
 <main>
   <div class="status-line"><span class="dot" id="liveDot"></span><span id="liveText">Connecting to database…</span></div>
   <div class="stats" id="stats"></div>
+  <div class="tabs">
+    <button class="tab active" id="tab-active" onclick="switchView('active')">Active queue <span class="pill" id="cnt-active">0</span></button>
+    <button class="tab" id="tab-opened" onclick="switchView('opened')">Opened <span class="pill" id="cnt-opened">0</span></button>
+  </div>
   <div class="filters">
     <input id="search" placeholder="Search name or tracker..." oninput="currentPage=1; render()" />
     <select id="statusFilter" onchange="currentPage=1; render()">
@@ -102,7 +114,6 @@
       <option value="on-track">On Track</option>
       <option value="at-risk">At Risk</option>
       <option value="delayed">Delayed</option>
-      <option value="opened">Opened</option>
     </select>
     <select id="tierFilter" onchange="currentPage=1; render()">
       <option value="">All Tiers</option>
@@ -111,6 +122,10 @@
     </select>
   </div>
   <table>
+    <colgroup>
+      <col class="c-client"><col class="c-loc"><col class="c-tier"><col class="c-open">
+      <col class="c-tracker"><col class="c-status"><col class="c-follow"><col class="c-act">
+    </colgroup>
     <thead><tr><th>Client</th><th>Location</th><th>Tier</th><th>Opening</th><th>Tracker</th><th>Status</th><th>Follow-ups</th><th></th></tr></thead>
     <tbody id="rows"></tbody>
   </table>
@@ -203,6 +218,7 @@ async function sha256(str) {
 const sb = supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
 let data = [];
 let currentPage = 1;
+let currentView = 'active';   // 'active' = not yet opened, 'opened' = opened archive
 const PAGE_SIZE = 10;
 let unlocked = sessionStorage.getItem('editUnlocked') === '1';
 const STATUS_LABELS = { "on-track":"On track","at-risk":"At risk","delayed":"Delayed","opened":"Opened" };
@@ -251,9 +267,19 @@ function render() {
   const q = document.getElementById('search').value.toLowerCase();
   const sf = document.getElementById('statusFilter').value;
   const tf = document.getElementById('tierFilter').value;
+  // Update tab counts + active state
+  const openedCount = data.filter(l => l.status === 'opened').length;
+  document.getElementById('cnt-opened').textContent = openedCount;
+  document.getElementById('cnt-active').textContent = data.length - openedCount;
+  document.getElementById('tab-active').classList.toggle('active', currentView === 'active');
+  document.getElementById('tab-opened').classList.toggle('active', currentView === 'opened');
+  // Status filter only applies to the active queue
+  document.getElementById('statusFilter').style.display = currentView === 'opened' ? 'none' : '';
+
   const list = data
+    .filter(l => currentView === 'opened' ? l.status === 'opened' : l.status !== 'opened')
     .filter(l => (l.name + ' ' + (l.clientName||'') + ' ' + (l.tracker||'')).toLowerCase().includes(q))
-    .filter(l => !sf || l.status === sf)
+    .filter(l => currentView === 'opened' || !sf || l.status === sf)
     .filter(l => !tf || l.tier === tf)
     .sort((a,b) => (a.openingDate||'').localeCompare(b.openingDate||''));
 
@@ -269,7 +295,7 @@ function render() {
       <td><b>${esc(l.clientName||'—')}</b></td>
       <td>${esc(l.name)}${l.notes?`<div class="countdown">${esc(l.notes)}</div>`:''}</td>
       <td>${esc(l.tier||'—')}</td>
-      <td>${esc(l.openingDate)}<div class="countdown">${cd}</div></td>
+      <td><span style="white-space:nowrap">${esc(l.openingDate)}</span><div class="countdown">${cd}</div></td>
       <td>${esc(l.tracker||'—')}</td>
       <td><span class="badge b-${l.status}">${STATUS_LABELS[l.status]||l.status}</span></td>
       <td>${followFlags(l) || '<span class="countdown">—</span>'}</td>
@@ -290,6 +316,12 @@ function renderPager(total, totalPages, start, shown) {
   }
   btns += `<button onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>Next ›</button>`;
   pager.innerHTML = `<span class="info">Showing ${start+1}–${start+shown} of ${total}</span><span class="pages">${btns}</span>`;
+}
+
+function switchView(v) {
+  currentView = v;
+  currentPage = 1;
+  render();
 }
 
 function goPage(p) {
