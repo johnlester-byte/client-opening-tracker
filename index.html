@@ -49,6 +49,10 @@
   .tab:hover { color: var(--text); border-color: transparent; }
   .tab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
   .tab .pill { display: inline-block; margin-left: 7px; background: var(--panel-2); color: var(--muted); border-radius: 999px; padding: 1px 8px; font-size: 11px; }
+  /* Activity Log tab: lighter pill style, set apart from the queue tabs */
+  #tab-activity { border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); color: var(--text); padding: 6px 14px; margin-bottom: 4px; }
+  #tab-activity:hover { border-color: var(--accent-h); }
+  #tab-activity.active { background: var(--accent); border-color: var(--accent); color: #fff; }
   .filters { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
   .filters input, .filters select { font: inherit; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; }
   table { width: 100%; table-layout: fixed; border-collapse: collapse; background: var(--panel); border-radius: 12px; overflow: hidden; }
@@ -156,7 +160,7 @@
   <div class="tabs">
     <button class="tab active" id="tab-active" onclick="switchView('active')">Active Queue <span class="pill" id="cnt-active">0</span></button>
     <button class="tab" id="tab-opened" onclick="switchView('opened')">Opened <span class="pill" id="cnt-opened">0</span></button>
-    <button class="tab" id="tab-activity" onclick="switchView('activity')">Activity Log</button>
+    <button class="tab" id="tab-activity" style="margin-left:auto" onclick="switchView('activity')">Activity Log</button>
   </div>
   <div id="tableView">
   <div class="filters">
@@ -465,9 +469,9 @@ function renderStats() {
   document.getElementById('stats').innerHTML = `
     <div class="stat"><div class="n">${total}</div><div class="l">Total</div></div>
     <div class="stat"><div class="n">${upcoming}</div><div class="l">Upcoming</div></div>
+    <div class="stat"><div class="n" style="color:var(--blue)">${opened}</div><div class="l">Opened</div></div>
     <div class="stat"><div class="n" style="color:var(--amber)">${needFollow}</div><div class="l">Need follow-up</div></div>
-    <div class="stat"><div class="n" style="color:var(--red)">${atRisk}</div><div class="l">At risk / delayed</div></div>
-    <div class="stat"><div class="n" style="color:var(--blue)">${opened}</div><div class="l">Opened</div></div>`;
+    <div class="stat"><div class="n" style="color:var(--red)">${atRisk}</div><div class="l">At risk / delayed</div></div>`;
 }
 
 // Show/hide the "Opened workflow" fields depending on the chosen status.
