@@ -150,7 +150,7 @@
   </div>
   <div class="actions">
     <button class="primary" id="addBtn" onclick="openModal()">+ Add Client</button>
-    <button id="exportBtn" onclick="exportCSV()">⬇ Export CSV</button>
+    <button id="exportBtn" onclick="openExportModal()">⬇ Export CSV</button>
     <span class="userbox"><span id="userEmail"></span><button onclick="signOut()">Sign out</button></span>
   </div>
 </header>
@@ -239,6 +239,46 @@
       <div style="display:flex;gap:10px">
         <button onclick="closeModal()">Cancel</button>
         <button class="primary" id="saveBtn" onclick="saveLocation()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Export options modal -->
+<div class="overlay" id="exportOverlay">
+  <div class="modal">
+    <h2>Export to CSV</h2>
+    <div class="form-grid">
+      <div class="field span2"><label>Which clients?</label>
+        <select id="x-scope">
+          <option value="active">Active queue (not yet opened)</option>
+          <option value="opened">Opened only</option>
+          <option value="all">All clients</option>
+        </select>
+      </div>
+      <div class="field"><label>Status</label>
+        <select id="x-status">
+          <option value="">All statuses</option>
+          <option value="on-track">On track</option>
+          <option value="at-risk">At risk</option>
+          <option value="delayed">Delayed</option>
+          <option value="opened">Opened</option>
+        </select>
+      </div>
+      <div class="field"><label>Tier</label>
+        <select id="x-tier">
+          <option value="">All tiers</option>
+          <option value="Basic (+)">Basic (+)</option>
+          <option value="Pro/Auto (+)">Pro/Auto (+)</option>
+        </select>
+      </div>
+      <div class="field span2"><span id="x-count" class="countdown"></span></div>
+    </div>
+    <div class="modal-actions">
+      <span></span>
+      <div style="display:flex;gap:10px">
+        <button onclick="closeExportModal()">Cancel</button>
+        <button class="primary" onclick="runExport()">Download CSV</button>
       </div>
     </div>
   </div>
@@ -349,7 +389,7 @@ sb.channel('locations-changes')
 // realtime isn't enabled. Skipped while a dialog is open so it never disrupts editing.
 setInterval(() => {
   if (!currentUser) return;
-  const anyOpen = ['overlay','confirmOverlay'].some(id => document.getElementById(id).classList.contains('open'));
+  const anyOpen = ['overlay','confirmOverlay','exportOverlay'].some(id => document.getElementById(id).classList.contains('open'));
   if (!anyOpen && document.visibilityState === 'visible') { load(); if (currentView === 'activity') renderActivity(); }
 }, 20000);
 
@@ -608,9 +648,40 @@ async function renderActivity() {
 }
 
 /* --- CSV export --------------------------------------------------------------
-   Downloads the rows currently shown (respects the tab + filters) as a CSV. */
-function exportCSV() {
-  const rows = getFilteredList();
+   Lets the user choose scope (active / opened / all), status, and tier,
+   then downloads exactly that selection as a CSV. */
+function openExportModal() {
+  // Sensible defaults based on the tab you're currently on.
+  document.getElementById('x-scope').value = currentView === 'opened' ? 'opened' : 'active';
+  document.getElementById('x-status').value = '';
+  document.getElementById('x-tier').value = '';
+  updateExportCount();
+  // Recount whenever a choice changes.
+  ['x-scope','x-status','x-tier'].forEach(id => document.getElementById(id).onchange = updateExportCount);
+  document.getElementById('exportOverlay').classList.add('open');
+}
+function closeExportModal() { document.getElementById('exportOverlay').classList.remove('open'); }
+
+// Apply the chosen scope/status/tier to the full dataset and return the rows.
+function getExportRows() {
+  const scope = document.getElementById('x-scope').value;
+  const st = document.getElementById('x-status').value;
+  const tr = document.getElementById('x-tier').value;
+  return data
+    .filter(l => scope === 'all' ? true : scope === 'opened' ? l.status === 'opened' : l.status !== 'opened')
+    .filter(l => !st || l.status === st)
+    .filter(l => !tr || l.tier === tr)
+    .sort((a,b) => (a.openingDate||'').localeCompare(b.openingDate||''));
+}
+// Show a live "N clients will be exported" count in the dialog.
+function updateExportCount() {
+  const n = getExportRows().length;
+  document.getElementById('x-count').textContent = `${n} client${n===1?'':'s'} will be exported.`;
+}
+// Build and download the CSV for the current selection.
+function runExport() {
+  const rows = getExportRows();
+  if (!rows.length) { alert('No clients match that selection.'); return; }
   const headers = ['Client','Location','Tier','Opening Date','Tracker','Status','Notes','Pre-open done','Post-open done','Actual open date','Open outcome'];
   const cell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;   // quote + escape for CSV
   const lines = [headers.join(',')];
@@ -624,6 +695,7 @@ function exportCSV() {
   a.download = `client-openings-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
   URL.revokeObjectURL(a.href);
+  closeExportModal(); toast('CSV downloaded');
 }
 
 // --- Misc + startup ----------------------------------------------------------
@@ -634,6 +706,7 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 // Close each dialog when its dark backdrop (not the dialog itself) is clicked.
 document.getElementById('overlay').addEventListener('click', e => { if (e.target.id === 'overlay') closeModal(); });
 document.getElementById('confirmOverlay').addEventListener('click', e => { if (e.target.id === 'confirmOverlay') closeConfirm(); });
+document.getElementById('exportOverlay').addEventListener('click', e => { if (e.target.id === 'exportOverlay') closeExportModal(); });
 
 // Startup: react to the current session, then to any login/logout afterwards.
 sb.auth.getSession().then(({ data }) => handleAuth(data.session));
