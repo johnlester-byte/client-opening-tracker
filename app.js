@@ -6,7 +6,7 @@
 
    How it's organized, top to bottom:
      1.  CONFIG ........ database connection settings
-     2.  State ......... in-memory lists (clients, reminders) + translators
+     2.  State ......... the in-memory client list + translators
      3.  Auth .......... sign in / sign out
      4.  Data load ..... read everything from the database + keep it live
      5.  Helpers ....... date math, follow-up flags, text escaping
@@ -14,9 +14,8 @@
      7.  Add / Edit .... the client dialog
      8.  Delete ........ remove a client (with a confirm step)
      9.  Activity log .. records who changed what
-     10. Reminders ..... the 🔔 feature (add/edit + Add-to-Calendar)
-     11. CSV export
-     12. Startup
+     10. CSV export
+     11. Startup
    ============================================================================ */
 
 /* ============================================================================
@@ -38,10 +37,9 @@ const CONFIG = {
 // --- App state ---------------------------------------------------------------
 const sb = supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey); // DB client
 let data = [];                 // all rows loaded from the database (camelCase form)
-let reminders = [];            // all reminder rows (camelCase form)
 let currentUser = null;        // the logged-in Supabase user (null when signed out)
 let currentPage = 1;           // which page of the table is showing
-let currentView = 'active';    // 'active' | 'opened' | 'reminders' | 'activity'
+let currentView = 'active';    // 'active' | 'opened' | 'activity'
 const PAGE_SIZE = 10;          // rows shown per page
 const STATUS_LABELS = { "on-track":"On track","at-risk":"At risk","delayed":"Delayed","opened":"Opened" };
 
@@ -49,10 +47,6 @@ const STATUS_LABELS = { "on-track":"On track","at-risk":"At risk","delayed":"Del
 // helpers translate between the two shapes whenever we read or write.
 function toDb(o){ return { id:o.id, client_name:o.clientName, name:o.name, tier:o.tier, opening_date:o.openingDate, tracker:o.tracker, status:o.status, notes:o.notes, pre_open_done:o.preOpenDone, post_open_done:o.postOpenDone, opened_date:o.openedDate||null, open_outcome:o.openOutcome||null }; }
 function fromDb(r){ return { id:r.id, clientName:r.client_name, name:r.name, tier:r.tier, openingDate:r.opening_date, tracker:r.tracker, status:r.status, notes:r.notes, preOpenDone:r.pre_open_done, postOpenDone:r.post_open_done, openedDate:r.opened_date, openOutcome:r.open_outcome }; }
-
-// Same translation for the reminders table.
-function toDbRem(o){ return { id:o.id, location_id:o.locationId||null, title:o.title, remind_on:o.remindOn, assignee:o.assignee||null, notes:o.notes||null, done:o.done, created_by:o.createdBy||null }; }
-function fromDbRem(r){ return { id:r.id, locationId:r.location_id, title:r.title, remindOn:r.remind_on, assignee:r.assignee, notes:r.notes, done:r.done, createdBy:r.created_by, createdAt:r.created_at }; }
 
 /* --- Authentication ----------------------------------------------------------
    The app stays hidden behind a login screen until a valid session exists.
@@ -90,10 +84,6 @@ async function load() {
   const { data: rows, error } = await sb.from('locations').select('*');
   if (error) { setLive(false, 'Database error: ' + error.message); return; }
   data = rows.map(fromDb);
-  // Reminders live in their own table; load them too (don't fail the page if the
-  // table isn't set up yet — just leave the list empty).
-  const { data: remRows, error: remErr } = await sb.from('reminders').select('*');
-  reminders = (remErr ? [] : remRows.map(fromDbRem));
   setLive(true, 'Live · synced with database');
   render();
 }
@@ -108,14 +98,13 @@ function setLive(ok, msg) {
 // (Requires the table to be added to the supabase_realtime publication — see docs/.)
 sb.channel('locations-changes')
   .on('postgres_changes', { event: '*', schema: 'public', table: 'locations' }, () => { load(); if (currentView === 'activity') renderActivity(); })
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'reminders' }, () => { load(); })
   .subscribe();
 
 // Backup auto-refresh: reload every 20s so the view stays current even if
 // realtime isn't enabled. Skipped while a dialog is open so it never disrupts editing.
 setInterval(() => {
   if (!currentUser) return;
-  const anyOpen = ['overlay','confirmOverlay','exportOverlay','reminderOverlay'].some(id => document.getElementById(id).classList.contains('open'));
+  const anyOpen = ['overlay','confirmOverlay','exportOverlay'].some(id => document.getElementById(id).classList.contains('open'));
   if (!anyOpen && document.visibilityState === 'visible') { load(); if (currentView === 'activity') renderActivity(); }
 }, 20000);
 
@@ -159,20 +148,15 @@ function render() {
   const openedCount = data.filter(l => l.status === 'opened').length;
   document.getElementById('cnt-opened').textContent = openedCount;
   document.getElementById('cnt-active').textContent = data.length - openedCount;
-  document.getElementById('cnt-reminders').textContent = reminders.filter(r => !r.done).length;
   document.getElementById('tab-active').classList.toggle('active', currentView === 'active');
   document.getElementById('tab-opened').classList.toggle('active', currentView === 'opened');
-  document.getElementById('tab-reminders').classList.toggle('active', currentView === 'reminders');
   document.getElementById('tab-activity').classList.toggle('active', currentView === 'activity');
 
-  // Each non-table tab swaps the table out for its own panel.
+  // The Activity Log tab swaps the table out for the log panel.
   const isActivity = currentView === 'activity';
-  const isReminders = currentView === 'reminders';
-  document.getElementById('tableView').style.display = (isActivity || isReminders) ? 'none' : '';
+  document.getElementById('tableView').style.display = isActivity ? 'none' : '';
   document.getElementById('activityPanel').style.display = isActivity ? 'block' : 'none';
-  document.getElementById('remindersPanel').style.display = isReminders ? 'block' : 'none';
-  if (isReminders) { renderStats(); renderReminders(); return; }
-  if (isActivity) { renderStats(); renderActivity(); return; }
+  if (isActivity) { renderActivity(); return; }
 
   // Status filter only applies to the active queue
   document.getElementById('statusFilter').style.display = currentView === 'opened' ? 'none' : '';
@@ -197,7 +181,7 @@ function render() {
       <td>${esc(l.tracker||'—')}</td>
       <td><span class="badge b-${l.status}">${STATUS_LABELS[l.status]||l.status}</span></td>
       <td>${followFlags(l) || '<span class="countdown">—</span>'}</td>
-      <td class="row-actions"><button onclick="openModal('${l.id}')">Edit</button> <button class="bell" onclick="openReminderModal('', '${l.id}')" title="Set a reminder for this client">🔔</button></td>
+      <td class="row-actions"><button onclick="openModal('${l.id}')">Edit</button></td>
     </tr>`;
   }).join('');
   document.getElementById('empty').style.display = list.length ? 'none' : 'block';
@@ -237,14 +221,12 @@ function renderStats() {
   const needFollow = data.filter(l => followFlags(l)).length;          // currently have a pre/post-open flag
   const atRisk = data.filter(l => l.status==='at-risk'||l.status==='delayed').length;
   const opened = data.filter(l => l.status==='opened').length;
-  const remindersDue = reminders.filter(r => !r.done && daysUntil(r.remindOn) <= 0).length;  // due today or overdue
   document.getElementById('stats').innerHTML = `
     <div class="stat"><div class="n">${total}</div><div class="l">Total</div></div>
     <div class="stat"><div class="n">${upcoming}</div><div class="l">Upcoming</div></div>
     <div class="stat"><div class="n" style="color:var(--blue)">${opened}</div><div class="l">Opened</div></div>
     <div class="stat"><div class="n" style="color:var(--amber)">${needFollow}</div><div class="l">Need follow-up</div></div>
-    <div class="stat"><div class="n" style="color:var(--red)">${atRisk}</div><div class="l">At risk / delayed</div></div>
-    <div class="stat"><div class="n" style="color:var(--accent-h)">${remindersDue}</div><div class="l">Reminders due</div></div>`;
+    <div class="stat"><div class="n" style="color:var(--red)">${atRisk}</div><div class="l">At risk / delayed</div></div>`;
 }
 
 // Show/hide the "Opened workflow" fields depending on the chosen status.
@@ -380,183 +362,6 @@ async function renderActivity() {
   }).join('');
 }
 
-/* --- Reminders ---------------------------------------------------------------
-   A reminder is a dated "what to do" note for a teammate, optionally linked to a
-   client. The list lets you tick them done and, crucially, push each one to a
-   calendar (downloadable .ics or Google Calendar) so the calendar emails/pops a
-   reminder on the day — no email server needed on our side.                  */
-// Draw the reminders table (sorted by date; completed ones hidden unless asked).
-function renderReminders() {
-  const showDone = document.getElementById('rem-show-done').checked;
-  const list = reminders
-    .filter(r => showDone || !r.done)
-    .sort((a,b) => (a.remindOn||'').localeCompare(b.remindOn||''));
-  const tbody = document.getElementById('reminderRows');
-  document.getElementById('remindersEmpty').style.display = list.length ? 'none' : 'block';
-  tbody.innerHTML = list.map(r => {
-    const dd = daysUntil(r.remindOn);
-    const cd = r.done ? 'Done' : (dd > 0 ? `in ${dd}d` : dd === 0 ? 'today' : `${-dd}d ago`);
-    const overdue = !r.done && dd < 0;
-    const loc = r.locationId ? data.find(l => l.id === r.locationId) : null;
-    const clientLabel = loc ? `${esc(loc.clientName||'—')} — ${esc(loc.name)}` : '<span class="countdown">—</span>';
-    return `<tr style="${r.done?'opacity:.55':''}">
-      <td><span style="white-space:nowrap">${esc(r.remindOn)}</span><div class="countdown" style="${overdue?'color:var(--red)':''}">${cd}</div></td>
-      <td><b>${esc(r.title)}</b>${r.notes?`<div class="countdown">${esc(r.notes)}</div>`:''}</td>
-      <td>${esc(r.assignee||'—')}</td>
-      <td>${clientLabel}</td>
-      <td class="row-actions">
-        <button onclick="downloadICS('${r.id}')" title="Download a calendar invite (.ics) with a reminder">📅 Calendar</button>
-        <button onclick="openGoogleCal('${r.id}')" title="Add to Google Calendar">Google</button>
-        <button onclick="toggleReminderDone('${r.id}')">${r.done?'Undo':'Done'}</button>
-        <button onclick="openReminderModal('${r.id}')">Edit</button>
-      </td>
-    </tr>`;
-  }).join('');
-}
-
-// Open the Add/Edit Reminder dialog. Pass an id to edit; pass a presetLocationId
-// (optional) to pre-link a client when adding.
-function openReminderModal(id, presetLocationId) {
-  // (Re)build the client dropdown from the current client list.
-  const sel = document.getElementById('r-location');
-  const sorted = [...data].sort((a,b) => ((a.clientName||a.name||'')).localeCompare(b.clientName||b.name||''));
-  sel.innerHTML = '<option value="">— None —</option>' + sorted.map(l =>
-    `<option value="${esc(l.id)}">${esc((l.clientName ? l.clientName + ' — ' : '') + l.name)}</option>`).join('');
-  if (id) {
-    const r = reminders.find(x => x.id === id);
-    document.getElementById('reminderTitle').textContent = 'Edit Reminder';
-    document.getElementById('r-id').value = r.id;
-    document.getElementById('r-title').value = r.title || '';
-    document.getElementById('r-date').value = r.remindOn || '';
-    document.getElementById('r-assignee').value = r.assignee || '';
-    sel.value = r.locationId || '';
-    document.getElementById('r-notes').value = r.notes || '';
-    document.getElementById('r-done').checked = !!r.done;
-    document.getElementById('r-deleteBtn').style.display = 'block';
-  } else {
-    document.getElementById('reminderTitle').textContent = 'Add Reminder';
-    ['r-id','r-title','r-assignee','r-notes'].forEach(i => document.getElementById(i).value = '');
-    document.getElementById('r-date').value = '';
-    sel.value = presetLocationId || '';
-    document.getElementById('r-done').checked = false;
-    document.getElementById('r-deleteBtn').style.display = 'none';
-  }
-  document.getElementById('reminderOverlay').classList.add('open');
-}
-function closeReminderModal(){ document.getElementById('reminderOverlay').classList.remove('open'); }
-
-// Validate + save a reminder (insert or update via upsert).
-async function saveReminder() {
-  const id = document.getElementById('r-id').value;
-  const title = document.getElementById('r-title').value.trim();
-  const date = document.getElementById('r-date').value;
-  if (!title || !date) { alert('A description and a date are required.'); return; }
-  const obj = {
-    id: id || 'rem-' + Date.now(),
-    locationId: document.getElementById('r-location').value || null,
-    title,
-    remindOn: date,
-    assignee: document.getElementById('r-assignee').value.trim() || null,
-    notes: document.getElementById('r-notes').value.trim() || null,
-    done: document.getElementById('r-done').checked,
-    createdBy: currentUser ? currentUser.email : null
-  };
-  document.getElementById('r-saveBtn').disabled = true;
-  const { error } = await sb.from('reminders').upsert(toDbRem(obj));
-  document.getElementById('r-saveBtn').disabled = false;
-  if (error) { alert('Save failed: ' + error.message); return; }
-  logActivity(id ? 'reminder updated' : 'reminder set', title, 'Remind on ' + date + (obj.assignee ? ' · for ' + obj.assignee : ''));
-  closeReminderModal(); toast('Reminder saved'); load();
-}
-
-// Delete the reminder currently open in the dialog.
-async function deleteReminder() {
-  const id = document.getElementById('r-id').value;
-  if (!id) return;
-  const r = reminders.find(x => x.id === id);
-  const { error } = await sb.from('reminders').delete().eq('id', id);
-  if (error) { alert('Delete failed: ' + error.message); return; }
-  logActivity('reminder deleted', r ? r.title : 'reminder', '');
-  closeReminderModal(); toast('Reminder deleted'); load();
-}
-
-// Quick tick/untick straight from the list.
-async function toggleReminderDone(id) {
-  const r = reminders.find(x => x.id === id);
-  if (!r) return;
-  const { error } = await sb.from('reminders').update({ done: !r.done }).eq('id', id);
-  if (error) { alert('Update failed: ' + error.message); return; }
-  logActivity(!r.done ? 'reminder completed' : 'reminder reopened', r.title, '');
-  load();
-}
-
-// --- Calendar export (so the user's calendar does the actual reminding) -------
-// Format a Date as floating local time: YYYYMMDDTHHMMSS (no timezone shift).
-function icsStamp(d){
-  const p = n => String(n).padStart(2,'0');
-  return d.getFullYear() + p(d.getMonth()+1) + p(d.getDate()) + 'T' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
-}
-// Build the title / description / location text shared by .ics and Google links.
-function reminderEventText(r){
-  const loc = r.locationId ? data.find(l => l.id === r.locationId) : null;
-  const client = loc ? `${loc.clientName || ''}${loc.clientName ? ' — ' : ''}${loc.name}` : '';
-  let desc = r.notes || '';
-  if (client)     desc += (desc ? '\n\n' : '') + 'Client: ' + client;
-  if (r.assignee) desc += (desc ? '\n' : '') + 'For: ' + r.assignee;
-  return { title: 'Reminder: ' + r.title, desc, location: client };
-}
-// Produce a valid .ics for a reminder: a 30-min event at 9am on the day, with a
-// pop-up the morning of and one the day before.
-function buildICS(r){
-  const start = new Date(r.remindOn + 'T09:00:00');
-  const end   = new Date(start.getTime() + 30*60000);
-  const { title, desc, location } = reminderEventText(r);
-  const fold = s => (s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
-  const lines = [
-    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//PodPlay//Client Opening Tracker//EN',
-    'CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT',
-    'UID:' + r.id + '@client-opening-tracker',
-    'DTSTAMP:' + icsStamp(new Date()),
-    'DTSTART:' + icsStamp(start),
-    'DTEND:'   + icsStamp(end),
-    'SUMMARY:' + fold(title),
-    'DESCRIPTION:' + fold(desc)
-  ];
-  if (location) lines.push('LOCATION:' + fold(location));
-  lines.push(
-    'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:' + fold(title),'TRIGGER:PT0M','END:VALARM',
-    'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:' + fold(title),'TRIGGER:-P1D','END:VALARM',
-    'END:VEVENT','END:VCALENDAR'
-  );
-  return lines.join('\r\n');
-}
-// Download the .ics file (opens in Apple Calendar / Outlook / Google import).
-function downloadICS(id){
-  const r = reminders.find(x => x.id === id);
-  if (!r) return;
-  const blob = new Blob([buildICS(r)], { type: 'text/calendar;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'reminder-' + r.remindOn + '.ics';
-  a.click();
-  URL.revokeObjectURL(a.href);
-  toast('Calendar invite downloaded');
-}
-// Open Google Calendar's "create event" page pre-filled for this reminder.
-function openGoogleCal(id){
-  const r = reminders.find(x => x.id === id);
-  if (!r) return;
-  const start = new Date(r.remindOn + 'T09:00:00');
-  const end   = new Date(start.getTime() + 30*60000);
-  const { title, desc, location } = reminderEventText(r);
-  const url = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
-    + '&text=' + encodeURIComponent(title)
-    + '&dates=' + icsStamp(start) + '/' + icsStamp(end)
-    + '&details=' + encodeURIComponent(desc)
-    + (location ? '&location=' + encodeURIComponent(location) : '');
-  window.open(url, '_blank');
-}
-
 /* --- CSV export --------------------------------------------------------------
    Lets the user choose scope (active / opened / all), status, and tier,
    then downloads exactly that selection as a CSV. */
@@ -617,7 +422,6 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 document.getElementById('overlay').addEventListener('click', e => { if (e.target.id === 'overlay') closeModal(); });
 document.getElementById('confirmOverlay').addEventListener('click', e => { if (e.target.id === 'confirmOverlay') closeConfirm(); });
 document.getElementById('exportOverlay').addEventListener('click', e => { if (e.target.id === 'exportOverlay') closeExportModal(); });
-document.getElementById('reminderOverlay').addEventListener('click', e => { if (e.target.id === 'reminderOverlay') closeReminderModal(); });
 
 // Startup: react to the current session, then to any login/logout afterwards.
 sb.auth.getSession().then(({ data }) => handleAuth(data.session));

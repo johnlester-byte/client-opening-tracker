@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <!--
   CLIENT OPENING TRACKER
-  A small web app for tracking client location openings + reminders.
+  A small web app for tracking client location opening dates and follow-ups.
   Data is stored in a Supabase database and shared live by the whole team.
   Hosted as a static site on GitHub Pages.
 
   THREE FILES make up the app:
     - index.html  -> the page structure (this file)
     - styles.css  -> ALL the colors and design  (edit this to restyle)
-    - app.js      -> the behavior (load data, render, add/edit, reminders)
+    - app.js      -> the behavior (load data, render, add/edit clients)
 
   Database setup scripts live in the docs/ folder.
 -->
@@ -55,7 +55,6 @@
   <div class="tabs">
     <button class="tab active" id="tab-active" onclick="switchView('active')">Active Queue <span class="pill" id="cnt-active">0</span></button>
     <button class="tab" id="tab-opened" onclick="switchView('opened')">Opened <span class="pill" id="cnt-opened">0</span></button>
-    <button class="tab" id="tab-reminders" onclick="switchView('reminders')">🔔 Reminders <span class="pill" id="cnt-reminders">0</span></button>
     <button class="tab" id="tab-activity" style="margin-left:auto" onclick="switchView('activity')">Activity Log</button>
   </div>
   <div id="tableView">
@@ -93,20 +92,6 @@
       <tbody id="activityRows"></tbody>
     </table>
     <div id="activityEmpty" class="empty" style="display:none">No activity recorded yet.</div>
-  </div>
-
-  <!-- Reminders view (shown when the Reminders tab is selected) -->
-  <div id="remindersPanel" style="display:none">
-    <div class="filters" style="justify-content:space-between">
-      <label class="check" style="cursor:pointer"><input type="checkbox" id="rem-show-done" onchange="renderReminders()" /> Show completed</label>
-      <button class="primary" onclick="openReminderModal()">+ Add Reminder</button>
-    </div>
-    <table>
-      <colgroup><col style="width:13%"><col style="width:34%"><col style="width:15%"><col style="width:16%"><col style="width:22%"></colgroup>
-      <thead><tr><th>When</th><th>What to do</th><th>For</th><th>Client</th><th></th></tr></thead>
-      <tbody id="reminderRows"></tbody>
-    </table>
-    <div id="remindersEmpty" class="empty" style="display:none">No reminders yet. Click “Add Reminder” to set one.</div>
   </div>
 </main>
 
@@ -204,31 +189,6 @@
     <div class="btns">
       <button onclick="closeConfirm()">Cancel</button>
       <button class="danger" onclick="confirmYes()">Delete</button>
-    </div>
-  </div>
-</div>
-
-<!-- Add / Edit Reminder modal -->
-<div class="overlay" id="reminderOverlay">
-  <div class="modal">
-    <h2 id="reminderTitle">Add Reminder</h2>
-    <input type="hidden" id="r-id" />
-    <div class="form-grid">
-      <div class="field span2"><label>What to do</label><input id="r-title" placeholder="e.g. Follow up with PBK Chattanooga before opening" /></div>
-      <div class="field"><label>Remind on</label><input id="r-date" type="date" /></div>
-      <div class="field"><label>For (who)</label><input id="r-assignee" placeholder="e.g. Faith" /></div>
-      <div class="field span2"><label>Link to client (optional)</label>
-        <select id="r-location"><option value="">— None —</option></select>
-      </div>
-      <div class="field span2"><label>Notes (optional)</label><textarea id="r-notes" placeholder="Anything to remember when the day comes..."></textarea></div>
-      <div class="field span2 checks"><label class="check"><input type="checkbox" id="r-done" /> Done</label></div>
-    </div>
-    <div class="modal-actions">
-      <button id="r-deleteBtn" onclick="deleteReminder()" style="color:var(--red)">Delete</button>
-      <div style="display:flex;gap:10px">
-        <button onclick="closeReminderModal()">Cancel</button>
-        <button class="primary" id="r-saveBtn" onclick="saveReminder()">Save</button>
-      </div>
     </div>
   </div>
 </div>

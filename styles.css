@@ -146,7 +146,3 @@
   .login-card .login-hint { font-size: 12px; margin: 16px 0 0; }
   /* Signed-in user box in the header */
   .userbox { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
-
-  /* Per-row 🔔 reminder button (sits next to Edit) */
-  .row-actions .bell { padding: 5px 9px; }
-  .row-actions .bell:hover { border-color: var(--accent-h); }
