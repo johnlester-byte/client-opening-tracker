@@ -44,11 +44,11 @@ create or replace function public.reminder_feed()
 returns table (
   client_name text, name text, tier text, opening_date date,
   tracker text, status text, notes text,
-  pre_open_done boolean, post_open_done boolean
+  pre_open_done boolean, post_open_done boolean, opened_date date
 )
 language sql stable security definer set search_path = public as $$
   select client_name, name, tier, opening_date, tracker, status, notes,
-         pre_open_done, post_open_done
+         pre_open_done, post_open_done, opened_date
   from locations;
 $$;
 grant execute on function public.reminder_feed() to anon;
