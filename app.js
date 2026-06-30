@@ -109,6 +109,29 @@ setInterval(() => {
   if (!anyOpen && document.visibilityState === 'visible') { load(); if (currentView === 'activity') renderActivity(); }
 }, 20000);
 
+// --- Custom dropdowns (status/tier filters) ----------------------------------
+// A real <select> still backs each one (so existing filtering code can keep
+// reading .value unchanged), but it's hidden — we draw our own button + list
+// in front of it so the open menu matches the rest of the page instead of
+// looking like a plain, inconsistently-styled browser popup.
+function toggleCsel(id) {
+  document.querySelectorAll('.csel.open').forEach(el => { if (el.id !== id) el.classList.remove('open'); });
+  document.getElementById(id).classList.toggle('open');
+}
+function pickCsel(id, value, label) {
+  const wrap = document.getElementById(id);
+  const select = wrap.querySelector('select');
+  select.value = value;
+  select.dispatchEvent(new Event('change'));
+  wrap.querySelector('.csel-label').textContent = label;
+  wrap.querySelectorAll('.csel-menu li').forEach(li => li.classList.toggle('selected', li.textContent === label));
+  wrap.classList.remove('open');
+}
+// Close any open dropdown when clicking outside of it.
+document.addEventListener('click', e => {
+  document.querySelectorAll('.csel.open').forEach(el => { if (!el.contains(e.target)) el.classList.remove('open'); });
+});
+
 // --- Date + follow-up helpers ------------------------------------------------
 // Whole days from today until the given YYYY-MM-DD (negative = in the past).
 function daysUntil(dateStr) {
@@ -178,8 +201,9 @@ function render() {
   document.getElementById('activityPanel').style.display = isActivity ? 'block' : 'none';
   if (isActivity) { renderActivity(); return; }
 
-  // Status filter only applies to the active queue
-  document.getElementById('statusFilter').style.display = currentView === 'opened' ? 'none' : '';
+  // Status filter only applies to the active queue (its wrapper, not the
+  // hidden native <select>, since that's what's actually visible now).
+  document.getElementById('statusSel').style.display = currentView === 'opened' ? 'none' : '';
 
   const list = getFilteredList();
 

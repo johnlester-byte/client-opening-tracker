@@ -92,7 +92,7 @@
   header .actions > button:not(.primary) { background: transparent; border: 1px solid rgba(255,255,255,.22); color: #dbe2f0; }
   header .actions > button:not(.primary):hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.35); }
 
-  main { padding: 28px 32px 40px; max-width: 1240px; margin: 0 auto; }
+  main { padding: 22px 32px 28px; max-width: 1240px; margin: 0 auto; }
 
   /* Hidden by default to match the design (no "Live/Connecting" line above
      the stat cards) — the dot/text are still kept up to date in the
@@ -103,8 +103,8 @@
   .dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); }
 
   /* ---- Stat cards ---- */
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap: 16px; margin-bottom: 26px; }
-  .stat { background: var(--panel); border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap: 16px; margin-bottom: 18px; }
+  .stat { background: var(--panel); border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px 20px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
   .stat .top { display: flex; align-items: center; gap: 8px; }
   .stat .dot { width: 9px; height: 9px; }
   .stat .l { font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
@@ -124,7 +124,7 @@
   .stat.s-total .dot { background: var(--muted); }
 
   /* ---- Tabs ---- */
-  .tabs { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .tabs { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-bottom: 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
   .tabs .tab-group { display: flex; gap: 4px; }
   .tab { background: none; border: none; border-bottom: 2px solid transparent; border-radius: 0; padding: 12px 14px; color: var(--muted); font-size: 14px; font-weight: 600; margin-bottom: -1px; box-shadow: none; }
   .tab:hover { color: var(--text); border-color: transparent; background: none; }
@@ -137,13 +137,29 @@
   #tab-activity.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
   /* ---- Filters ---- */
-  .filters { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; }
-  .filters input, .filters select { font: inherit; background: var(--panel); color: var(--text); border: 1px solid var(--border-2); border-radius: 10px; padding: 11px 14px; font-size: 14px; }
-  .filters input:focus, .filters select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(43,102,217,.13); }
+  .filters { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .filters input { font: inherit; background: var(--panel); color: var(--text); border: 1px solid var(--border-2); border-radius: 10px; padding: 11px 14px; font-size: 14px; }
+  .filters input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(43,102,217,.13); }
   .filters .search-wrap { position: relative; flex: 1 1 320px; max-width: 400px; }
   .filters .search-wrap svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); pointer-events: none; }
   .filters .search-wrap input { width: 100%; padding-left: 38px; }
-  .filters select { min-width: 150px; appearance: none; -webkit-appearance: none; -moz-appearance: none; padding-right: 34px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%238a94a3' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
+
+  /* ---- Custom dropdown (status/tier filters) ----
+     A real <select> stays in the DOM (hidden) so the existing filtering
+     code can keep reading its .value untouched; this is the part you
+     actually see and click, fully ours to style. */
+  .csel { position: relative; }
+  .csel-native { display: none; }
+  .csel-btn { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 150px; font: inherit; background: var(--panel); color: var(--text); border: 1px solid var(--border-2); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-weight: 500; cursor: pointer; text-align: left; }
+  .csel-btn:hover { border-color: #b9c2cf; }
+  .csel.open .csel-btn { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(43,102,217,.13); }
+  .csel-chevron { color: var(--muted); flex-shrink: 0; transition: transform .15s; }
+  .csel.open .csel-chevron { transform: rotate(180deg); }
+  .csel-menu { position: absolute; top: calc(100% + 6px); left: 0; right: 0; min-width: 170px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 12px 28px rgba(16,24,40,.14); padding: 6px; margin: 0; list-style: none; z-index: 30; display: none; max-height: 240px; overflow-y: auto; }
+  .csel.open .csel-menu { display: block; }
+  .csel-menu li { padding: 9px 12px; border-radius: 7px; font-size: 14px; color: var(--text); cursor: pointer; }
+  .csel-menu li:hover { background: var(--panel-2); }
+  .csel-menu li.selected { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
 
   /* ---- Table ---- */
   /* Only the top corners round here — the bottom edge sits flush against
@@ -155,7 +171,7 @@
   col.c-open { width: 10%; } col.c-tracker { width: 12%; } col.c-status { width: 9%; }
   col.c-follow { width: 12%; } col.c-act { width: 9%; }
   th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; background: var(--panel-2); }
-  td { padding-top: 18px; padding-bottom: 18px; border-bottom: 1px solid #eef1f5; border-left: 3px solid transparent; }
+  td { padding-top: 13px; padding-bottom: 13px; border-bottom: 1px solid #eef1f5; border-left: 3px solid transparent; }
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: #f9fbfd; }
   /* At-risk / delayed rows get a colored left edge so they jump out at a glance */

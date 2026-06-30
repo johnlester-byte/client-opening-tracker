@@ -74,17 +74,44 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#9aa4b2" stroke-width="2"></circle><line x1="16.5" y1="16.5" x2="21" y2="21" stroke="#9aa4b2" stroke-width="2" stroke-linecap="round"></line></svg>
       <input id="search" placeholder="Search name, location or tracker…" oninput="currentPage=1; render()" />
     </div>
-    <select id="statusFilter" onchange="currentPage=1; render()">
-      <option value="">All Statuses</option>
-      <option value="on-track">On Track</option>
-      <option value="at-risk">At Risk</option>
-      <option value="delayed">Delayed</option>
-    </select>
-    <select id="tierFilter" onchange="currentPage=1; render()">
-      <option value="">All Tiers</option>
-      <option value="Basic (+)">Basic (+)</option>
-      <option value="Pro/Auto (+)">Pro/Auto (+)</option>
-    </select>
+    <!-- Custom dropdown: a real (hidden) <select> keeps all the existing
+         filtering code working unchanged, with our own styled button + list
+         drawn in front of it so the open menu matches the rest of the page
+         instead of looking like a plain browser popup. -->
+    <div class="csel" id="statusSel">
+      <select id="statusFilter" class="csel-native" onchange="currentPage=1; render()">
+        <option value="">All Statuses</option>
+        <option value="on-track">On Track</option>
+        <option value="at-risk">At Risk</option>
+        <option value="delayed">Delayed</option>
+      </select>
+      <button type="button" class="csel-btn" onclick="toggleCsel('statusSel')">
+        <span class="csel-label">All Statuses</span>
+        <svg class="csel-chevron" width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <ul class="csel-menu">
+        <li class="selected" onclick="pickCsel('statusSel','','All Statuses')">All Statuses</li>
+        <li onclick="pickCsel('statusSel','on-track','On track')">On track</li>
+        <li onclick="pickCsel('statusSel','at-risk','At risk')">At risk</li>
+        <li onclick="pickCsel('statusSel','delayed','Delayed')">Delayed</li>
+      </ul>
+    </div>
+    <div class="csel" id="tierSel">
+      <select id="tierFilter" class="csel-native" onchange="currentPage=1; render()">
+        <option value="">All Tiers</option>
+        <option value="Basic (+)">Basic (+)</option>
+        <option value="Pro/Auto (+)">Pro/Auto (+)</option>
+      </select>
+      <button type="button" class="csel-btn" onclick="toggleCsel('tierSel')">
+        <span class="csel-label">All Tiers</span>
+        <svg class="csel-chevron" width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <ul class="csel-menu">
+        <li class="selected" onclick="pickCsel('tierSel','','All Tiers')">All Tiers</li>
+        <li onclick="pickCsel('tierSel','Basic (+)','Basic (+)')">Basic (+)</li>
+        <li onclick="pickCsel('tierSel','Pro/Auto (+)','Pro/Auto (+)')">Pro/Auto (+)</li>
+      </ul>
+    </div>
   </div>
   <table>
     <colgroup>
