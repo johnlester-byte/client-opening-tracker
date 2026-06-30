@@ -73,6 +73,7 @@ function handleAuth(session) {
   document.getElementById('app').style.display = loggedIn ? 'block' : 'none';
   if (loggedIn) {
     document.getElementById('userEmail').textContent = currentUser.email;
+    document.getElementById('userAvatar').textContent = (currentUser.email || '?').charAt(0).toUpperCase();
     document.getElementById('loginPass').value = '';
     load();
   }
@@ -114,14 +115,23 @@ function daysUntil(dateStr) {
   const today = new Date(); today.setHours(0,0,0,0);
   return Math.round((new Date(dateStr + 'T00:00:00') - today) / 86400000);
 }
-// Returns the HTML flag(s) a row should show: a "Pre-open due" badge when the
-// opening is within 3 days (and pre-open isn't ticked), and a "Post-open due"
-// badge once it's 3+ days past opening (and post-open isn't ticked).
+// Returns the follow-up label(s) a row should show: "Pre-open due" when the
+// opening is within 3 days (and pre-open isn't ticked), and "Post-open due"
+// once it's 3+ days past opening (and post-open isn't ticked).
 function followFlags(loc) {
   const dd = daysUntil(loc.openingDate); const f = [];
-  if (!loc.preOpenDone && dd <= 3 && dd >= 0) f.push('<span class="flag flag-pre">Pre-open due</span>');
-  if (!loc.postOpenDone && dd <= -3) f.push('<span class="flag flag-post">Post-open due</span>');
-  return f.join('');
+  if (!loc.preOpenDone && dd <= 3 && dd >= 0) f.push('Pre-open due');
+  if (!loc.postOpenDone && dd <= -3) f.push('Post-open due');
+  return f;
+}
+// Countdown pill shown under the opening date: text + color tone (green/amber/red/opened).
+function countdownInfo(l) {
+  if (l.status === 'opened') return { cd: 'Opened', tone: 'opened' };
+  const dd = daysUntil(l.openingDate);
+  if (dd < 0) return { cd: `${-dd}d overdue`, tone: 'red' };
+  if (dd === 0) return { cd: 'opens today', tone: 'amber' };
+  if (dd <= 10) return { cd: `in ${dd}d`, tone: 'amber' };
+  return { cd: `in ${dd}d`, tone: 'green' };
 }
 // Escape user text before putting it in HTML, to prevent broken markup / injection.
 function esc(s){ return (s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -169,18 +179,21 @@ function render() {
   const start = (currentPage - 1) * PAGE_SIZE;
   const pageItems = list.slice(start, start + PAGE_SIZE);
 
-  // Build the table rows. `cd` is the small countdown text under the date.
+  // Build the table rows. `cd` is the small countdown pill under the date.
   document.getElementById('rows').innerHTML = pageItems.map(l => {
-    const dd = daysUntil(l.openingDate);
-    const cd = l.status === 'opened' ? 'Opened' : (dd > 0 ? `in ${dd}d` : dd === 0 ? 'today' : `${-dd}d ago`);
-    return `<tr>
-      <td><b>${esc(l.clientName||'—')}</b></td>
-      <td>${esc(l.name)}${l.notes?`<div class="countdown">${esc(l.notes)}</div>`:''}</td>
-      <td>${esc(l.tier||'—')}</td>
-      <td><span style="white-space:nowrap">${esc(l.openingDate)}</span><div class="countdown">${cd}</div></td>
-      <td>${esc(l.tracker||'—')}</td>
-      <td><span class="badge b-${l.status}">${STATUS_LABELS[l.status]||l.status}</span></td>
-      <td>${followFlags(l) || '<span class="countdown">—</span>'}</td>
+    const { cd, tone } = countdownInfo(l);
+    const flags = followFlags(l);
+    const rowClass = l.status === 'at-risk' ? 'row-at-risk' : l.status === 'delayed' ? 'row-delayed' : '';
+    const initial = (l.clientName || l.name || '?').charAt(0).toUpperCase();
+    const trackers = (l.tracker || '').split('|').map(t => t.trim()).filter(Boolean);
+    return `<tr class="${rowClass}">
+      <td><div class="name-cell"><div class="avatar">${esc(initial)}</div><b>${esc(l.clientName||'—')}</b></div></td>
+      <td><div class="loc-name">${esc(l.name)}</div>${l.notes?`<p class="loc-note">${esc(l.notes)}</p>`:''}</td>
+      <td><span class="tier-pill">${esc(l.tier||'—')}</span></td>
+      <td><div class="date-val">${esc(l.openingDate)}</div><span class="countdown cd-${tone}">${esc(cd)}</span></td>
+      <td><div class="tracker-wrap">${trackers.length ? trackers.map(t=>`<span class="tracker-pill">${esc(t)}</span>`).join('') : '<span class="no-follow">—</span>'}</div></td>
+      <td><span class="badge b-${l.status}"><span class="sdot"></span>${STATUS_LABELS[l.status]||l.status}</span></td>
+      <td>${flags.length ? flags.map(f=>`<span class="follow-pill"><span class="fdot"></span>${esc(f)}</span>`).join(' ') : '<span class="no-follow">—</span>'}</td>
       <td class="row-actions"><button onclick="openModal('${l.id}')">Edit</button></td>
     </tr>`;
   }).join('');
@@ -218,15 +231,15 @@ function goPage(p) {
 function renderStats() {
   const total = data.length;
   const upcoming = data.filter(l => l.status!=='opened' && daysUntil(l.openingDate) >= 0).length;
-  const needFollow = data.filter(l => followFlags(l)).length;          // currently have a pre/post-open flag
+  const needFollow = data.filter(l => followFlags(l).length).length;   // currently have a pre/post-open flag
   const atRisk = data.filter(l => l.status==='at-risk'||l.status==='delayed').length;
   const opened = data.filter(l => l.status==='opened').length;
   document.getElementById('stats').innerHTML = `
-    <div class="stat"><div class="n">${total}</div><div class="l">Total</div></div>
-    <div class="stat"><div class="n">${upcoming}</div><div class="l">Upcoming</div></div>
-    <div class="stat"><div class="n" style="color:var(--blue)">${opened}</div><div class="l">Opened</div></div>
-    <div class="stat"><div class="n" style="color:var(--amber)">${needFollow}</div><div class="l">Need follow-up</div></div>
-    <div class="stat"><div class="n" style="color:var(--red)">${atRisk}</div><div class="l">At risk / delayed</div></div>`;
+    <div class="stat s-total"><div class="top"><span class="dot"></span><span class="l">Total</span></div><div class="n">${total}</div><div class="sub">all locations</div></div>
+    <div class="stat s-upcoming"><div class="top"><span class="dot"></span><span class="l">Upcoming</span></div><div class="n">${upcoming}</div><div class="sub">in the pipeline</div></div>
+    <div class="stat s-opened-card"><div class="top"><span class="dot"></span><span class="l">Opened</span></div><div class="n">${opened}</div><div class="sub">live &amp; launched</div></div>
+    <div class="stat s-follow ${needFollow ? 'due' : 'ok'}"><div class="top"><span class="dot"></span><span class="l">Need follow-up</span></div><div class="n">${needFollow}</div><div class="sub">${needFollow ? 'action required' : 'all clear'}</div></div>
+    <div class="stat s-risk"><div class="top"><span class="dot"></span><span class="l">At risk / delayed</span></div><div class="n">${atRisk}</div><div class="sub">${atRisk ? 'needs attention' : 'none flagged'}</div></div>`;
 }
 
 // Show/hide the "Opened workflow" fields depending on the chosen status.
@@ -356,7 +369,7 @@ async function renderActivity() {
     return `<tr>
       <td><span style="white-space:nowrap">${esc(when)}</span></td>
       <td>${esc(ACTION_LABEL[r.action] || r.action)}</td>
-      <td>${esc(r.entity || '')}${r.details ? `<div class="countdown">${esc(r.details)}</div>` : ''}</td>
+      <td>${esc(r.entity || '')}${r.details ? `<div class="note-sub">${esc(r.details)}</div>` : ''}</td>
       <td>${esc(r.user_email || '')}</td>
     </tr>`;
   }).join('');

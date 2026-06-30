@@ -39,27 +39,39 @@
 <!-- The app. Hidden until logged in (see handleAuth). -->
 <div id="app" style="display:none">
 <header>
-  <div>
-    <h1>Client Opening Tracker</h1>
-    <p>Monitor location opening dates and follow-up reminders</p>
+  <div class="header-title">
+    <div class="header-icon">📍</div>
+    <div>
+      <h1>Client Opening Tracker</h1>
+      <p>Monitor location opening dates and follow-up reminders</p>
+    </div>
   </div>
   <div class="actions">
     <button class="primary" id="addBtn" onclick="openModal()">+ Add Client</button>
-    <button id="exportBtn" onclick="openExportModal()">⬇ Export CSV</button>
-    <span class="userbox"><span id="userEmail"></span><button onclick="signOut()">Sign out</button></span>
+    <button id="exportBtn" onclick="openExportModal()">↓ Export CSV</button>
+    <span class="userbox">
+      <span class="divider"></span>
+      <span class="who"><span class="avatar-ring" id="userAvatar"></span><span class="email" id="userEmail"></span></span>
+      <button onclick="signOut()">Sign out</button>
+    </span>
   </div>
 </header>
 <main>
   <div class="status-line"><span class="dot" id="liveDot"></span><span id="liveText">Connecting to database…</span></div>
   <div class="stats" id="stats"></div>
   <div class="tabs">
-    <button class="tab active" id="tab-active" onclick="switchView('active')">Active Queue <span class="pill" id="cnt-active">0</span></button>
-    <button class="tab" id="tab-opened" onclick="switchView('opened')">Opened <span class="pill" id="cnt-opened">0</span></button>
-    <button class="tab" id="tab-activity" style="margin-left:auto" onclick="switchView('activity')">Activity Log</button>
+    <div class="tab-group">
+      <button class="tab active" id="tab-active" onclick="switchView('active')">Active Queue <span class="pill" id="cnt-active">0</span></button>
+      <button class="tab" id="tab-opened" onclick="switchView('opened')">Opened <span class="pill" id="cnt-opened">0</span></button>
+    </div>
+    <button id="tab-activity" onclick="switchView('activity')">Activity Log</button>
   </div>
   <div id="tableView">
   <div class="filters">
-    <input id="search" placeholder="Search name or tracker..." oninput="currentPage=1; render()" />
+    <div class="search-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="#9aa4b2" stroke-width="2"></circle><line x1="16.5" y1="16.5" x2="21" y2="21" stroke="#9aa4b2" stroke-width="2" stroke-linecap="round"></line></svg>
+      <input id="search" placeholder="Search name, location or tracker…" oninput="currentPage=1; render()" />
+    </div>
     <select id="statusFilter" onchange="currentPage=1; render()">
       <option value="">All Statuses</option>
       <option value="on-track">On Track</option>
@@ -77,7 +89,7 @@
       <col class="c-client"><col class="c-loc"><col class="c-tier"><col class="c-open">
       <col class="c-tracker"><col class="c-status"><col class="c-follow"><col class="c-act">
     </colgroup>
-    <thead><tr><th>Client</th><th>Location</th><th>Tier</th><th>Opening</th><th>Tracker</th><th>Status</th><th>Follow-ups</th><th></th></tr></thead>
+    <thead><tr><th>Client</th><th>Location &amp; notes</th><th>Tier</th><th>Opening</th><th>Tracker</th><th>Status</th><th>Follow-ups</th><th></th></tr></thead>
     <tbody id="rows"></tbody>
   </table>
   <div id="empty" class="empty" style="display:none">No clients here yet. Click “Add Client” to get started.</div>
@@ -168,7 +180,7 @@
           <option value="Pro/Auto (+)">Pro/Auto (+)</option>
         </select>
       </div>
-      <div class="field span2"><span id="x-count" class="countdown"></span></div>
+      <div class="field span2"><span id="x-count" class="note-sub"></span></div>
     </div>
     <div class="modal-actions">
       <span></span>
