@@ -115,6 +115,16 @@ function daysUntil(dateStr) {
   const today = new Date(); today.setHours(0,0,0,0);
   return Math.round((new Date(dateStr + 'T00:00:00') - today) / 86400000);
 }
+// Pretty-print a YYYY-MM-DD date for display in the table, e.g. "Jul 20, 2026".
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr + 'T00:00:00');
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+// Which long notes are currently expanded, keyed by location id (see toggleNote).
+let expandedNotes = {};
+function toggleNote(id) { expandedNotes[id] = !expandedNotes[id]; render(); }
 // Returns the follow-up label(s) a row should show: "Pre-open due" when the
 // opening is within 3 days (and pre-open isn't ticked), and "Post-open due"
 // once it's 3+ days past opening (and post-open isn't ticked).
@@ -186,11 +196,15 @@ function render() {
     const rowClass = l.status === 'at-risk' ? 'row-at-risk' : l.status === 'delayed' ? 'row-delayed' : '';
     const initial = (l.clientName || l.name || '?').charAt(0).toUpperCase();
     const trackers = (l.tracker || '').split('|').map(t => t.trim()).filter(Boolean);
+    const note = l.notes || '';
+    const isLong = note.length > 95;
+    const expanded = !!expandedNotes[l.id];
+    const clamp = isLong && !expanded;
     return `<tr class="${rowClass}">
       <td><div class="name-cell"><div class="avatar">${esc(initial)}</div><b>${esc(l.clientName||'—')}</b></div></td>
-      <td><div class="loc-name">${esc(l.name)}</div>${l.notes?`<p class="loc-note">${esc(l.notes)}</p>`:''}</td>
+      <td><div class="loc-name">${esc(l.name)}</div>${note?`<p class="loc-note${clamp?' clamp':''}">${esc(note)}</p>`:''}${isLong?`<button class="more-btn" onclick="toggleNote('${l.id}')">${expanded?'Show less':'Show more'}</button>`:''}</td>
       <td><span class="tier-pill">${esc(l.tier||'—')}</span></td>
-      <td><div class="date-val">${esc(l.openingDate)}</div><span class="countdown cd-${tone}">${esc(cd)}</span></td>
+      <td><div class="date-val">${esc(formatDate(l.openingDate))}</div><span class="countdown cd-${tone}">${esc(cd)}</span></td>
       <td><div class="tracker-wrap">${trackers.length ? trackers.map(t=>`<span class="tracker-pill">${esc(t)}</span>`).join('') : '<span class="no-follow">—</span>'}</div></td>
       <td><span class="badge b-${l.status}"><span class="sdot"></span>${STATUS_LABELS[l.status]||l.status}</span></td>
       <td>${flags.length ? flags.map(f=>`<span class="follow-pill"><span class="fdot"></span>${esc(f)}</span>`).join(' ') : '<span class="no-follow">—</span>'}</td>
@@ -205,7 +219,10 @@ function render() {
 // Draw the "Showing x–y of N" text and the page-number buttons.
 function renderPager(total, totalPages, start, shown) {
   const pager = document.getElementById('pager');
-  if (total === 0) { pager.innerHTML = ''; return; }
+  // No rows: hide the bar entirely instead of leaving an empty bordered box
+  // sitting above the "No clients here yet" message.
+  if (total === 0) { pager.innerHTML = ''; pager.style.display = 'none'; return; }
+  pager.style.display = 'flex';
   let btns = `<button onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹ Prev</button>`;
   for (let p = 1; p <= totalPages; p++) {
     btns += `<button class="${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`;

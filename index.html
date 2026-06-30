@@ -39,25 +39,27 @@
 <!-- The app. Hidden until logged in (see handleAuth). -->
 <div id="app" style="display:none">
 <header>
-  <div class="header-title">
-    <div class="header-icon">📍</div>
-    <div>
-      <h1>Client Opening Tracker</h1>
-      <p>Monitor location opening dates and follow-up reminders</p>
+  <div class="header-inner">
+    <div class="header-title">
+      <div class="header-icon">📍</div>
+      <div>
+        <h1>Client Opening Tracker</h1>
+        <p>Monitor location opening dates and follow-up reminders</p>
+      </div>
     </div>
-  </div>
-  <div class="actions">
-    <button class="primary" id="addBtn" onclick="openModal()">+ Add Client</button>
-    <button id="exportBtn" onclick="openExportModal()">↓ Export CSV</button>
-    <span class="userbox">
-      <span class="divider"></span>
-      <span class="who"><span class="avatar-ring" id="userAvatar"></span><span class="email" id="userEmail"></span></span>
-      <button onclick="signOut()">Sign out</button>
-    </span>
+    <div class="actions">
+      <button class="primary" id="addBtn" onclick="openModal()">+ Add Client</button>
+      <button id="exportBtn" onclick="openExportModal()">↓ Export CSV</button>
+      <span class="userbox">
+        <span class="divider"></span>
+        <span class="who"><span class="avatar-ring" id="userAvatar"></span><span class="email" id="userEmail"></span></span>
+        <button onclick="signOut()">Sign out</button>
+      </span>
+    </div>
   </div>
 </header>
 <main>
-  <div class="status-line"><span class="dot" id="liveDot"></span><span id="liveText">Connecting to database…</span></div>
+  <div class="status-line" id="statusLine"><span class="dot" id="liveDot"></span><span id="liveText">Connecting to database…</span></div>
   <div class="stats" id="stats"></div>
   <div class="tabs">
     <div class="tab-group">
