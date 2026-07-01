@@ -174,11 +174,11 @@
   /* Table text runs a size smaller than the rest of the UI (13px vs the
      14px body default) — dense tabular data reads better a touch smaller. */
   th, td { text-align: left; padding: 13px 20px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; overflow-wrap: anywhere; }
-  col.c-client { width: 14%; } col.c-loc { width: 15%; } col.c-tier { width: 7%; }
-  col.c-open { width: 9%; } col.c-tracker { width: 10%; } col.c-status { width: 8%; }
-  col.c-follow { width: 8%; } col.c-ready { width: 17%; } col.c-act { width: 8%; }
+  col.c-client { width: 14%; } col.c-loc { width: 15%; } col.c-tier { width: 8%; }
+  col.c-open { width: 9%; } col.c-tracker { width: 12%; } col.c-status { width: 8%; }
+  col.c-follow { width: 8%; } col.c-ready { width: 15%; } col.c-act { width: 8%; }
   th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; background: var(--panel-2); }
-  td { padding-top: 15px; padding-bottom: 15px; border-bottom: 1px solid #eef1f5; border-left: 3px solid transparent; }
+  td { padding-top: 18px; padding-bottom: 18px; border-bottom: 1px solid #eef1f5; border-left: 3px solid transparent; }
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: #f9fbfd; }
   /* At-risk / delayed rows get a colored left edge so they jump out at a glance */
@@ -203,10 +203,12 @@
 
   /* ---- Pills (tier / tracker / countdown / follow-up) ---- */
   .tier-pill, .tracker-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 999px; background: #f1f4f8; border: 1px solid #e3e8ef; font-size: 11.5px; font-weight: 600; color: #3d4757; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  /* Two trackers line up side by side as a neat pair instead of the free-flowing
-     wrap stacking them at slightly different widths; a third (rare) wraps below. */
-  .tracker-wrap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-  .tracker-wrap .tracker-pill { justify-content: center; }
+  /* A single tracker gets the full column width; a second one sits beside it
+     if there's room, or wraps to its own line otherwise. The old fixed
+     2-column grid used to squeeze a lone name into half the column and
+     truncate it even when the cell had plenty of room to spare. */
+  .tracker-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tracker-wrap .tracker-pill { max-width: 100%; justify-content: center; }
   .countdown { display: inline-flex; margin-top: 7px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
   .countdown.cd-green  { color: var(--green-tx); background: var(--green-bg); }
   .countdown.cd-amber  { color: var(--amber-tx); background: var(--amber-bg); }
