@@ -43,6 +43,15 @@ let currentView = 'active';    // 'active' | 'opened' | 'activity'
 const PAGE_SIZE = 10;          // rows shown per page
 const STATUS_LABELS = { "on-track":"On track","at-risk":"At risk","delayed":"Delayed","opened":"Opened" };
 
+// Client-facing "Open Readiness" checklist (readiness.html). Each location
+// gets its own row in the `readiness` table with a secret `token` — that's
+// what makes the client's link work without a login (see docs/readiness-setup.sql).
+// This map is keyed by location id: { token, pct, updatedAt }.
+let readinessMap = {};
+// Resolves to readiness.html next to wherever this page is actually hosted.
+const READINESS_PAGE = new URL('readiness.html', location.href).href;
+function readinessUrl(token) { return READINESS_PAGE + '?token=' + token; }
+
 // The database uses snake_case column names; the app uses camelCase. These two
 // helpers translate between the two shapes whenever we read or write.
 function toDb(o){ return { id:o.id, client_name:o.clientName, name:o.name, tier:o.tier, opening_date:o.openingDate, tracker:o.tracker, status:o.status, notes:o.notes, pre_open_done:o.preOpenDone, post_open_done:o.postOpenDone, opened_date:o.openedDate||null, open_outcome:o.openOutcome||null }; }
@@ -82,11 +91,25 @@ function handleAuth(session) {
 // Fetch every row from the database into `data`, then redraw the table.
 async function load() {
   if (!currentUser) return;     // only logged-in users can read data
-  const { data: rows, error } = await sb.from('locations').select('*');
+  const [locRes] = await Promise.all([
+    sb.from('locations').select('*'),
+    loadReadiness()
+  ]);
+  const { data: rows, error } = locRes;
   if (error) { setLive(false, 'Database error: ' + error.message); return; }
   data = rows.map(fromDb);
   setLive(true, 'Live · synced with database');
   render();
+}
+
+// Fetch every client's readiness progress (token + % complete) in one go.
+// Best-effort: if this table isn't set up yet, the tracker still works —
+// the Readiness column just falls back to "Set up link" for everyone.
+async function loadReadiness() {
+  const { data: rows, error } = await sb.from('readiness').select('location_id, token, pct, updated_at');
+  if (error) { console.warn('readiness load failed', error.message); return; }
+  readinessMap = {};
+  rows.forEach(r => { readinessMap[r.location_id] = { token: r.token, pct: r.pct, updatedAt: r.updated_at }; });
 }
 
 // Update the little "Live / Database error" status line under the header.
@@ -99,6 +122,12 @@ function setLive(ok, msg) {
 // (Requires the table to be added to the supabase_realtime publication — see docs/.)
 sb.channel('locations-changes')
   .on('postgres_changes', { event: '*', schema: 'public', table: 'locations' }, () => { load(); if (currentView === 'activity') renderActivity(); })
+  .subscribe();
+
+// Same idea for readiness: the moment a client checks something off on their
+// link, everyone looking at the tracker sees the progress bar move.
+sb.channel('readiness-changes')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'readiness' }, () => { load(); })
   .subscribe();
 
 // Backup auto-refresh: reload every 20s so the view stays current even if
@@ -232,12 +261,47 @@ function render() {
       <td><div class="tracker-wrap">${trackers.length ? trackers.map(t=>`<span class="tracker-pill">${esc(t)}</span>`).join('') : '<span class="no-follow">—</span>'}</div></td>
       <td><span class="badge b-${l.status}"><span class="sdot"></span>${STATUS_LABELS[l.status]||l.status}</span></td>
       <td>${flags.length ? flags.map(f=>`<span class="follow-pill"><span class="fdot"></span>${esc(f)}</span>`).join(' ') : '<span class="no-follow">—</span>'}</td>
+      <td>${renderReadinessCell(l.id)}</td>
       <td class="row-actions"><button onclick="openModal('${l.id}')">Edit</button></td>
     </tr>`;
   }).join('');
   document.getElementById('empty').style.display = list.length ? 'none' : 'block';
   renderPager(list.length, totalPages, start, pageItems.length);
   renderStats();
+}
+
+// Small progress bar + copy-link button for a client's readiness checklist,
+// or a "Set up link" button for clients that predate this feature (fixed
+// permanently by running the backfill step in docs/readiness-setup.sql).
+function renderReadinessCell(id) {
+  const r = readinessMap[id];
+  if (!r) return `<button onclick="createReadinessLink('${id}')">Set up link</button>`;
+  const pct = r.pct || 0;
+  return `<div class="ready-wrap">
+    <div class="ready-bar"><i style="width:${pct}%"></i></div>
+    <div class="ready-row"><span class="ready-pct">${pct}%</span><button class="ready-copy" onclick="copyReadinessLink('${r.token}')">Copy link</button></div>
+  </div>`;
+}
+
+// Create a readiness row (and therefore a link) on demand for a client that
+// doesn't have one yet, then copy the new link straight to the clipboard.
+async function createReadinessLink(id) {
+  const { data: row, error } = await sb.from('readiness').insert({ location_id: id }).select('location_id, token, pct').single();
+  if (error) { alert('Could not create link: ' + error.message); return; }
+  readinessMap[id] = { token: row.token, pct: row.pct, updatedAt: null };
+  render();
+  copyReadinessLink(row.token);
+}
+
+// Copy a client's private readiness link to the clipboard (falls back to a
+// prompt if clipboard access is blocked, e.g. over plain http).
+function copyReadinessLink(token) {
+  const url = readinessUrl(token);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => toast('Link copied')).catch(() => window.prompt('Copy this link:', url));
+  } else {
+    window.prompt('Copy this link:', url);
+  }
 }
 
 // Draw the "Showing x–y of N" text and the page-number buttons.
@@ -353,6 +417,14 @@ async function saveLocation() {
   const { error } = await sb.from('locations').upsert(toDb(obj));
   document.getElementById('saveBtn').disabled = false;
   if (error) { alert('Save failed: ' + error.message); return; }
+
+  // New clients automatically get a readiness row (and therefore a client
+  // link) — no separate step needed. Best-effort: a failure here shouldn't
+  // block saving the client; the row-actions button covers the fallback.
+  if (!existing) {
+    const { error: rErr } = await sb.from('readiness').insert({ location_id: obj.id });
+    if (rErr) console.warn('readiness row create failed', rErr.message);
+  }
 
   // Record the change in the activity log (newly opened gets its own action).
   const label = `${obj.clientName || '—'} — ${obj.name}`;
