@@ -39,6 +39,8 @@ Read CONTEXT.md, DOCUMENTATION.md, INSTRUCTIONS.md, and HANDOFF.md before writin
 - `next.config.ts` stays minimal
 - External image domains go in `images.remotePatterns`, not `domains`
 - Never commit .env files — all secrets in Vercel Environment Variables
+- Commit a root `vercel.json` with `"framework": "nextjs"`, `"buildCommand": "next build"`, `"outputDirectory": ".next"` — this repo's Vercel project was originally configured for the old static site with a manual "Output Directory: public" override in the dashboard, which fails every Next.js build ("No Output Directory named public found"). `vercel.json` in the repo overrides that stale dashboard setting, so never remove it or let it drift
+- If a Vercel build ever fails with a missing-output-directory error, check `vercel.json` is present and correct before touching anything else
 
 ## GitHub versioning
 - One feature branch per session: `feat/foundation`, `feat/client-hub`, `feat/hubspot`, `feat/ops-guide`
