@@ -174,9 +174,9 @@
   /* Table text runs a size smaller than the rest of the UI (13px vs the
      14px body default) — dense tabular data reads better a touch smaller. */
   th, td { text-align: left; padding: 13px 20px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; overflow-wrap: anywhere; }
-  col.c-client { width: 15%; } col.c-loc { width: 17%; } col.c-tier { width: 8%; }
-  col.c-open { width: 9%; } col.c-tracker { width: 11%; } col.c-status { width: 8%; }
-  col.c-follow { width: 10%; } col.c-ready { width: 14%; } col.c-act { width: 8%; }
+  col.c-client { width: 14%; } col.c-loc { width: 15%; } col.c-tier { width: 7%; }
+  col.c-open { width: 9%; } col.c-tracker { width: 10%; } col.c-status { width: 8%; }
+  col.c-follow { width: 8%; } col.c-ready { width: 17%; } col.c-act { width: 8%; }
   th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; background: var(--panel-2); }
   td { padding-top: 15px; padding-bottom: 15px; border-bottom: 1px solid #eef1f5; border-left: 3px solid transparent; }
   tr:last-child td { border-bottom: none; }
@@ -216,14 +216,24 @@
   .follow-pill .fdot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); }
   .no-follow { color: #c2c9d2; font-size: 15px; }
 
-  /* ---- Readiness column: progress bar + copy-link for the client's own checklist ---- */
-  .ready-wrap { min-width: 120px; }
-  .ready-bar { height: 6px; background: #eef1f5; border-radius: 4px; overflow: hidden; }
-  .ready-bar i { display: block; height: 100%; background: var(--green); border-radius: 4px; }
-  .ready-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
-  .ready-pct { font-family: 'Geist Mono', 'Inter', monospace; font-size: 11.5px; font-weight: 600; color: var(--text); }
-  .ready-copy { padding: 0; border: none; background: none; color: var(--accent); font-size: 11.5px; font-weight: 700; cursor: pointer; }
-  .ready-copy:hover { color: var(--accent-h); }
+  /* ---- Readiness column: progress bar + status pill + copy-link ---- */
+  .ready-wrap { min-width: 140px; }
+  .ready-bar { height: 6px; background: #e3e6ea; border-radius: 4px; overflow: hidden; }
+  .ready-bar i { display: block; height: 100%; border-radius: 4px; transition: width .2s; }
+  .ready-bar i.tone-muted { background: #b7bec7; }
+  .ready-bar i.tone-amber { background: var(--amber); }
+  .ready-bar i.tone-green { background: var(--green); }
+  .ready-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 7px; }
+  .ready-pill { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; font-family: 'Geist Mono', 'Inter', monospace; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .ready-pill.tone-muted { background: #f1f2f4; color: #6b7280; }
+  .ready-pill.tone-amber { background: var(--amber-bg); color: var(--amber-tx); }
+  .ready-pill.tone-green { background: var(--green-bg); color: var(--green-tx); }
+  .ready-copy { padding: 3px 9px; border: 1px solid #c7ccd2; border-radius: 6px; background: #fff; font-size: 11px; font-weight: 600; color: #3d4757; cursor: pointer; white-space: nowrap; }
+  .ready-copy:hover { background: #eef0f3; }
+
+  /* Row actions never wrap onto two lines, even in a narrow column. */
+  .row-actions { white-space: nowrap; }
+  .row-actions button { white-space: nowrap; }
 
   /* ---- Status badge ---- */
   .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }

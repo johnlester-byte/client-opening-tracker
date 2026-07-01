@@ -270,16 +270,28 @@ function render() {
   renderStats();
 }
 
-// Small progress bar + copy-link button for a client's readiness checklist,
-// or a "Set up link" button for clients that predate this feature (fixed
-// permanently by running the backfill step in docs/readiness-setup.sql).
+// Color tone for a readiness %, same red/amber/green language as the rest
+// of the dashboard: not started yet / in progress / fully checked off.
+function readinessTone(pct) {
+  if (pct >= 100) return 'green';
+  if (pct > 0) return 'amber';
+  return 'muted';
+}
+
+// Progress bar + status pill + copy-link button for a client's readiness
+// checklist, or a "Set up link" button for clients that predate this
+// feature (fixed permanently by running the backfill in docs/readiness-setup.sql).
 function renderReadinessCell(id) {
   const r = readinessMap[id];
   if (!r) return `<button onclick="createReadinessLink('${id}')">Set up link</button>`;
   const pct = r.pct || 0;
+  const tone = readinessTone(pct);
   return `<div class="ready-wrap">
-    <div class="ready-bar"><i style="width:${pct}%"></i></div>
-    <div class="ready-row"><span class="ready-pct">${pct}%</span><button class="ready-copy" onclick="copyReadinessLink('${r.token}')">Copy link</button></div>
+    <div class="ready-bar"><i class="tone-${tone}" style="width:${pct}%"></i></div>
+    <div class="ready-row">
+      <span class="ready-pill tone-${tone}">${pct}%</span>
+      <button class="ready-copy" onclick="copyReadinessLink('${r.token}')">Copy link</button>
+    </div>
   </div>`;
 }
 
