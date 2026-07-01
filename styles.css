@@ -230,6 +230,7 @@
   .ready-pill.tone-muted { background: #f1f2f4; color: #6b7280; }
   .ready-pill.tone-amber { background: var(--amber-bg); color: var(--amber-tx); }
   .ready-pill.tone-green { background: var(--green-bg); color: var(--green-tx); }
+  .ready-received { margin-top: 6px; font-size: 11px; color: var(--muted); }
   .ready-copy { padding: 3px 9px; border: 1px solid #c7ccd2; border-radius: 6px; background: #fff; font-size: 11px; font-weight: 600; color: #3d4757; cursor: pointer; white-space: nowrap; }
   .ready-copy:hover { background: #eef0f3; }
 

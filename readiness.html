@@ -77,6 +77,9 @@ table.matrix input[type=text] { width: 100%; border: 1px solid #d7dbe0; border-r
 .pathbox .opt b { display: block; }
 .pathbox .opt span { color: #4a525c; font-size: 13.5px; }
 .muted { color: #5b6470; font-size: 13px; }
+.locked-banner { background: #faf7fd; border-left: 3px solid #6a3a99; padding: 10px 14px; border-radius: 6px; color: #4a2e6b; font-size: 13.5px; margin: 0 0 18px; display: flex; align-items: center; gap: 8px; }
+.wrap input:disabled, .wrap select:disabled, .wrap textarea:disabled { background: #f4f5f7; color: #8a94a3; cursor: not-allowed; }
+.locked-field { opacity: .75; }
 @media print {
   body { background: #fff; }
   .bar, .no-print { display: none !important; }
@@ -94,10 +97,10 @@ table.matrix input[type=text] { width: 100%; border: 1px solid #d7dbe0; border-r
     <span class="pct" id="barPct">0% ready</span>
     <span class="savestatus" id="saveStatus"></span>
     <button class="primary" onclick="window.print()">Export PDF</button>
-    <button class="danger" onclick="clearAll()">Clear my answers</button>
   </div>
 
   <h1>Open Readiness</h1>
+  <div id="lockedNote" class="locked-banner" style="display:none"><b>Submitted.</b> This checklist is locked because the Club acknowledgment below has been signed. Contact PodPlay if something needs to change.</div>
 
   <!-- CONTEXT -->
   <div class="card">
@@ -132,7 +135,7 @@ table.matrix input[type=text] { width: 100%; border: 1px solid #d7dbe0; border-r
     <ul class="items" id="gateF_extra"></ul>
     <div class="field" style="margin-top:12px"><label>Issues found during QC or independent testing (list exact issues)</label><textarea data-k="qc_issues" rows="3" style="width:100%;padding:7px 9px;border:1px solid #c7ccd2;border-radius:7px;font:inherit;font-size:14px" oninput="saveNow()"></textarea></div>
     <div class="attest" data-attest="F">
-      <div class="chk"><input type="checkbox" data-ack="F"><label>I confirm the soft-opening tests above were performed and results recorded.</label></div>
+      <div class="chk"><input type="checkbox" data-ack="F" onchange="saveNow()"><label>I confirm the soft-opening tests above were performed and results recorded.</label></div>
       <div class="row"><input type="text" data-name="F" placeholder="Type your full name" oninput="stamp('F')"><input type="text" data-role="F" placeholder="Role" style="max-width:160px" oninput="stamp('F')"></div>
       <div class="stamp" data-stamp="F"></div>
     </div>
@@ -147,7 +150,7 @@ table.matrix input[type=text] { width: 100%; border: 1px solid #d7dbe0; border-r
     <label class="opt"><input type="radio" name="path" value="waive" data-k="path" onchange="saveNow()"><span class="opt"><b>Waive</b><span>The Club may open without completing the recommended process or soft opening. By selecting this, the Club acknowledges in writing that it proceeds at its own risk and that skipped checkpoints may surface problems at or after opening.</span></span></label>
 
     <div class="attest" data-attest="club" style="margin-top:16px">
-      <div class="chk"><input type="checkbox" data-ack="club"><label><b>Club acknowledgment.</b> I confirm the path above and that the gates are complete or knowingly waived.</label></div>
+      <div class="chk"><input type="checkbox" data-ack="club" onchange="saveNow()"><label><b>Club acknowledgment.</b> I confirm the path above and that the gates are complete or knowingly waived.</label></div>
       <div class="row"><input type="text" data-name="club" placeholder="Club representative full name" oninput="stamp('club')"><input type="text" data-role="club" placeholder="Role" style="max-width:160px" oninput="stamp('club')"></div>
       <div class="stamp" data-stamp="club"></div>
       <div id="shortTimeAgreement" class="gate-note warn" style="display:none;margin-top:10px">
@@ -156,7 +159,7 @@ table.matrix input[type=text] { width: 100%; border: 1px solid #d7dbe0; border-r
       </div>
     </div>
     <div class="attest" data-attest="podplay">
-      <div class="chk"><input type="checkbox" data-ack="podplay"><label><b>PodPlay acknowledgment.</b></label></div>
+      <div class="chk"><input type="checkbox" data-ack="podplay" onchange="saveNow()"><label><b>PodPlay acknowledgment.</b></label></div>
       <div class="row"><input type="text" data-name="podplay" placeholder="PodPlay representative full name" oninput="stamp('podplay')"><input type="text" data-role="podplay" placeholder="Role" style="max-width:160px" oninput="stamp('podplay')"></div>
       <div class="stamp" data-stamp="podplay"></div>
     </div>
@@ -262,6 +265,7 @@ async function loadFromServer(){
   restore();
   updateProgress();
   checkDates();
+  applyLock();
 }
 
 function showLinkError(msg){
@@ -278,7 +282,10 @@ function queueSave(){
 async function pushToServer(){
   if(!TOKEN) return;
   const pct = computePct();
-  const { error } = await sb.rpc("save_readiness", { p_token: TOKEN, p_data: state, p_pct: pct });
+  // p_submitted tells the server "the club has acknowledged as of now" — the
+  // database only ever records the first time this arrives true, so this is
+  // safe to send on every save without moving the recorded date around.
+  const { error } = await sb.rpc("save_readiness", { p_token: TOKEN, p_data: state, p_pct: pct, p_submitted: !!state.ack_club });
   setSaveStatus(error ? "error" : "saved");
 }
 
@@ -305,7 +312,23 @@ function saveNow(){
   document.querySelectorAll("[data-name]").forEach(el=> state["name_"+el.dataset.name]=el.value);
   document.querySelectorAll("[data-role]").forEach(el=> state["role_"+el.dataset.role]=el.value);
   updateProgress();
+  applyLock();
   queueSave();
+}
+
+// Once the Club acknowledgment is checked, everything above the Agreement
+// card (club context, dates, Gates A-G, the soft-opening matrix) locks —
+// it's the signed record, so it shouldn't keep changing after the fact.
+// The Agreement card itself (path choice + both signatures) stays editable
+// so the club can uncheck and reopen it if something needs fixing.
+function applyLock(){
+  const locked = !!state.ack_club;
+  document.querySelectorAll(".wrap input, .wrap select, .wrap textarea").forEach(el=>{
+    if (el.closest(".pathbox") || el.closest(".bar")) return;
+    el.disabled = locked;
+  });
+  const note = document.getElementById("lockedNote");
+  if (note) note.style.display = locked ? "flex" : "none";
 }
 
 function tagHtml(t){ return t ? '<span class="tag '+t+'">'+TAGS[t]+'</span>' : ""; }
@@ -327,7 +350,7 @@ function renderGate(g){
 function attestHtml(id, text, gonogo){
   const gg = gonogo ? '<select data-k="gonogo_decision" onchange="saveNow()" style="max-width:150px;padding:6px 9px;border:1px solid #c7ccd2;border-radius:7px;font:inherit"><option value="">Go / No-Go</option><option value="go">Go</option><option value="nogo">No-Go</option></select>' : "";
   return '<div class="attest" data-attest="'+id+'">'+
-    '<div class="chk"><input type="checkbox" data-ack="'+id+'"><label>'+esc(text)+'</label></div>'+
+    '<div class="chk"><input type="checkbox" data-ack="'+id+'" onchange="saveNow()"><label>'+esc(text)+'</label></div>'+
     '<div class="row"><input type="text" data-name="'+id+'" placeholder="Type your full name" oninput="stamp(\''+id+'\')"><input type="text" data-role="'+id+'" placeholder="Role" style="max-width:160px" oninput="stamp(\''+id+'\')">'+gg+'</div>'+
     '<div class="stamp" data-stamp="'+id+'"></div></div>';
 }
@@ -349,6 +372,7 @@ function buildMatrix(){
   }).join("");
   document.getElementById("matrix").innerHTML = head + rows;
   restore();
+  applyLock();
   if(loaded) saveNow();
 }
 
@@ -371,7 +395,7 @@ function getName(id){ const e=document.querySelector('[data-name="'+id+'"]'); re
 function getRole(id){ const e=document.querySelector('[data-role="'+id+'"]'); return e?e.value:""; }
 function getVal(k){ const e=document.querySelector('[data-k="'+k+'"]'); return e?e.value:""; }
 
-function toggleMigration(){ saveNow(); renderGates(); restore(); }
+function toggleMigration(){ saveNow(); renderGates(); restore(); applyLock(); }
 
 function renderGates(){
   document.getElementById("gates").innerHTML = GATES.map(renderGate).join("");
@@ -440,19 +464,6 @@ function stampSilent(id){
   const nm=(getName(id)||"").trim();
   const st=document.querySelector('[data-stamp="'+id+'"]');
   if(st && nm) st.textContent = "Attested by "+nm+(getRole(id)?(" ("+getRole(id)+")"):"")+(state["ts_"+id]?(" — "+state["ts_"+id]):"");
-}
-
-function clearAll(){
-  if(!confirm("Clear all of your answers on this checklist? This cannot be undone.")) return;
-  state={};
-  document.querySelectorAll("input,select").forEach(el=>{
-    if(el.type==="checkbox"||el.type==="radio") el.checked=false;
-    else if(el.dataset.k==="courts") el.value="1";
-    else el.value="";
-  });
-  document.querySelectorAll(".stamp").forEach(s=>s.textContent="");
-  document.getElementById("dateMsg").style.display="none";
-  renderGates(); buildMatrix(); renderExtras(); restore(); updateProgress(); queueSave();
 }
 
 function slug(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g,"_").slice(0,40); }

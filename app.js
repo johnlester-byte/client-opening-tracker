@@ -106,10 +106,10 @@ async function load() {
 // Best-effort: if this table isn't set up yet, the tracker still works —
 // the Readiness column just falls back to "Set up link" for everyone.
 async function loadReadiness() {
-  const { data: rows, error } = await sb.from('readiness').select('location_id, token, pct, updated_at');
+  const { data: rows, error } = await sb.from('readiness').select('location_id, token, pct, updated_at, submitted_at');
   if (error) { console.warn('readiness load failed', error.message); return; }
   readinessMap = {};
-  rows.forEach(r => { readinessMap[r.location_id] = { token: r.token, pct: r.pct, updatedAt: r.updated_at }; });
+  rows.forEach(r => { readinessMap[r.location_id] = { token: r.token, pct: r.pct, updatedAt: r.updated_at, submittedAt: r.submitted_at }; });
 }
 
 // Update the little "Live / Database error" status line under the header.
@@ -286,12 +286,17 @@ function renderReadinessCell(id) {
   if (!r) return `<button onclick="createReadinessLink('${id}')">Set up link</button>`;
   const pct = r.pct || 0;
   const tone = readinessTone(pct);
+  // submittedAt is set once, permanently, the moment the client checks the
+  // Club acknowledgment on their form — this is the "received" date, not
+  // just whenever they last touched the page.
+  const received = r.submittedAt ? `<div class="ready-received">Received ${formatDate(r.submittedAt.slice(0,10))}</div>` : '';
   return `<div class="ready-wrap">
     <div class="ready-bar"><i class="tone-${tone}" style="width:${pct}%"></i></div>
     <div class="ready-row">
       <span class="ready-pill tone-${tone}">${pct}%</span>
       <button class="ready-copy" onclick="copyReadinessLink('${r.token}')">Copy link</button>
     </div>
+    ${received}
   </div>`;
 }
 
