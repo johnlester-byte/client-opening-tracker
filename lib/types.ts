@@ -13,6 +13,8 @@ export interface Location {
   post_open_done: boolean;
   opened_date: string | null;
   open_outcome: string | null;
+  csa_owner: string | null;
+  hubspot_deal_id: string | null;
 }
 
 export type ActivityAction = "created" | "updated" | "deleted" | "opened";
@@ -41,20 +43,24 @@ export interface Database {
         Row: Location;
         Insert: Partial<Location> & { id: string; name: string; opening_date: string };
         Update: Partial<Location>;
+        Relationships: [];
       };
       activity_log: {
         Row: ActivityLogEntry;
         Insert: Partial<ActivityLogEntry>;
         Update: Partial<ActivityLogEntry>;
+        Relationships: [];
       };
       readiness: {
         Row: Readiness;
         Insert: Partial<Readiness> & { location_id: string; token: string };
         Update: Partial<Readiness>;
+        Relationships: [];
       };
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
+    Views: Record<never, never>;
+    Functions: Record<never, never>;
+    Enums: Record<never, never>;
+    CompositeTypes: Record<never, never>;
   };
 }

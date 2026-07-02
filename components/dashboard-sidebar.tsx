@@ -12,7 +12,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Overview", icon: Home },
-  { href: "/dashboard/clients", label: "Client Hub", icon: ClipboardList },
+  { href: "/dashboard/clients", label: "Client Opening Tracker", icon: ClipboardList },
   { href: "/dashboard/onboarding", label: "HubSpot Onboarding", icon: Link2 },
   { href: "/dashboard/ops-guide", label: "OPS Guide", icon: Wrench },
 ];

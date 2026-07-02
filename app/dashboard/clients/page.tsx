@@ -1,24 +1,36 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { nameFromEmail } from "@/lib/client-hub";
+import { ClientsTable } from "@/components/clients/clients-table";
 
-export default function ClientHubPage() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Client Hub</h1>
-        <p className="text-sm text-muted-foreground">
-          Track client location opening dates, status, and CSA ownership.
-        </p>
+export const dynamic = "force-dynamic";
+
+export default async function ClientHubPage() {
+  const supabase = createClient();
+  const admin = createAdminClient();
+  const [{ data: locations, error }, { data: userData }, { data: usersData }] = await Promise.all([
+    supabase.from("locations").select("*").order("opening_date"),
+    supabase.auth.getUser(),
+    admin.auth.admin.listUsers(),
+  ]);
+
+  if (error) {
+    return (
+      <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+        Failed to load clients: {error.message}
       </div>
+    );
+  }
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Coming soon</CardTitle>
-          <CardDescription>
-            The client tracker table will live here, backed by the `locations` table.
-          </CardDescription>
-        </CardHeader>
-        <CardContent />
-      </Card>
-    </div>
+  const loginRoster = Array.from(
+    new Set((usersData?.users ?? []).map((u) => u.email).filter((e): e is string => Boolean(e)).map(nameFromEmail))
+  ).sort();
+
+  return (
+    <ClientsTable
+      initialLocations={locations ?? []}
+      userEmail={userData.user?.email ?? ""}
+      loginRoster={loginRoster}
+    />
   );
 }
